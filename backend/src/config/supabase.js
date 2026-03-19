@@ -1,14 +1,3 @@
-const { createClient } = require('@supabase/supabase-js');
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  }
-);
-
-module.exports = supabase;
+// Supabase client removed. Use /src/config/db.js with raw pg queries.
+// This file kept to avoid import errors during transition.
+throw new Error('supabase.js removed — import from ../config/db instead');

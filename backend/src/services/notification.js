@@ -1,4 +1,4 @@
-const supabase = require('../config/supabase');
+const { query } = require('../config/db');
 // TODO: [PHASE-6] Import Firebase Admin SDK for FCM push
 // const admin = require('firebase-admin');
 
@@ -14,27 +14,25 @@ const supabase = require('../config/supabase');
  */
 async function sendNotification({ userId, type, title, body, data = {} }) {
   // Step 1: Write to DB (always)
-  const { data: notif, error } = await supabase.from('notifications').insert({
-    user_id: userId,
-    type,
-    title,
-    body,
-    data,
-    read: false,
-  }).select().single();
+  const { rows, rowCount } = await query(`
+    INSERT INTO notifications (user_id, type, title, body, data, read)
+    VALUES ($1, $2, $3, $4, $5, false)
+    RETURNING *
+  `, [userId, type, title, body, JSON.stringify(data)]);
 
-  if (error) {
-    console.error('Failed to save notification:', error);
+  if (!rowCount) {
+    console.error('Failed to save notification');
     return { success: false };
   }
 
+  const notif = rows[0];
+
   // Step 2: Send FCM push to all active device tokens for user
   // TODO: [PHASE-6] Implement FCM push
-  // const { data: tokens } = await supabase
-  //   .from('device_tokens')
-  //   .select('token, platform')
-  //   .eq('user_id', userId)
-  //   .eq('active', true);
+  // const { rows: tokens } = await query(
+  //   `SELECT token, platform FROM device_tokens WHERE user_id = $1 AND active = true`,
+  //   [userId]
+  // );
   // await sendFcmToTokens(tokens, { title, body, data });
 
   return { success: true, notificationId: notif.id };

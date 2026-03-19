@@ -1,9 +1,8 @@
 const crypto = require('crypto');
-const supabase = require('../config/supabase');
+const { query } = require('../config/db');
+const axios = require('axios');
 
 const OTP_EXPIRY_MINUTES = parseInt(process.env.OTP_EXPIRY_MINUTES || '10', 10);
-
-// DUMMY: Always works in dev without MSG91 credentials
 const DUMMY_PHONE = process.env.DUMMY_PHONE || '9999999999';
 const DUMMY_OTP = process.env.DUMMY_OTP || '123456';
 
@@ -16,19 +15,16 @@ function hashOtp(otp) {
 }
 
 async function sendOtpViaMSG91(phone, otp) {
-  // Dummy phone: skip real SMS
   if (phone === DUMMY_PHONE) return true;
 
   const authKey = process.env.MSG91_AUTH_KEY;
   if (!authKey) {
-    // No MSG91 key — log OTP to console for dev testing
-    console.log(`[DEV OTP] Phone: ${phone} OTP: ${otp}`);
+    console.log(`[DEV OTP] Phone: +91${phone}  OTP: ${otp}`);
     return true;
   }
 
   const normalizedPhone = phone.startsWith('91') ? phone : `91${phone}`;
   try {
-    const axios = require('axios');
     await axios.post('https://api.msg91.com/api/v5/flow/', {
       template_id: process.env.MSG91_TEMPLATE_ID,
       short_url: '0',
@@ -45,78 +41,53 @@ async function sendOtpViaMSG91(phone, otp) {
 }
 
 async function createAndSendOtp(phone, purpose) {
-  // Dummy phone: use fixed OTP
   const otp = phone === DUMMY_PHONE ? DUMMY_OTP : generateOtp();
   const otpHash = hashOtp(otp);
-  const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000).toISOString();
+  const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
 
-  // Invalidate old unused OTPs for this phone+purpose
-  await supabase
-    .from('otp_tokens')
-    .update({ used: true })
-    .eq('phone', phone)
-    .eq('purpose', purpose)
-    .eq('used', false);
+  // Invalidate old unused OTPs
+  await query(
+    `UPDATE otp_tokens SET used = true WHERE phone = $1 AND purpose = $2 AND used = false`,
+    [phone, purpose]
+  );
 
-  const { error } = await supabase.from('otp_tokens').insert({
-    phone,
-    otp_hash: otpHash,
-    purpose,
-    expires_at: expiresAt,
-    used: false,
-  });
-
-  if (error) {
-    console.error('Failed to save OTP:', error);
-    return { success: false, message: 'Failed to create OTP' };
-  }
+  await query(
+    `INSERT INTO otp_tokens (phone, otp_hash, purpose, expires_at, used) VALUES ($1, $2, $3, $4, false)`,
+    [phone, otpHash, purpose, expiresAt]
+  );
 
   const sent = await sendOtpViaMSG91(phone, otp);
-  if (!sent) {
-    return { success: false, message: 'Failed to send OTP via SMS' };
-  }
-
+  if (!sent) return { success: false, message: 'Failed to send OTP via SMS' };
   return { success: true };
 }
 
 async function verifyOtp(phone, otp, purpose) {
   const otpHash = hashOtp(otp);
 
-  const { data, error } = await supabase
-    .from('otp_tokens')
-    .select('id, expires_at, used')
-    .eq('phone', phone)
-    .eq('otp_hash', otpHash)
-    .eq('purpose', purpose)
-    .eq('used', false)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single();
+  const { rows } = await query(
+    `SELECT id, expires_at, used FROM otp_tokens
+     WHERE phone = $1 AND otp_hash = $2 AND purpose = $3 AND used = false
+     ORDER BY created_at DESC LIMIT 1`,
+    [phone, otpHash, purpose]
+  );
 
-  if (error || !data) {
-    return { valid: false, message: 'Invalid OTP' };
-  }
+  if (!rows.length) return { valid: false, message: 'Invalid OTP' };
 
-  if (new Date(data.expires_at) < new Date()) {
-    return { valid: false, message: 'OTP has expired' };
-  }
+  const row = rows[0];
+  if (new Date(row.expires_at) < new Date()) return { valid: false, message: 'OTP has expired' };
 
-  await supabase.from('otp_tokens').update({ used: true }).eq('id', data.id);
+  await query(`UPDATE otp_tokens SET used = true WHERE id = $1`, [row.id]);
   return { valid: true };
 }
 
 async function checkOtpRateLimit(phone) {
-  // Dummy phone: always allow
   if (phone === DUMMY_PHONE) return true;
   const limit = parseInt(process.env.OTP_RATE_LIMIT || '3', 10);
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-  const { count, error } = await supabase
-    .from('otp_tokens')
-    .select('id', { count: 'exact', head: true })
-    .eq('phone', phone)
-    .gte('created_at', oneHourAgo);
-  if (error) return true;
-  return count < limit;
+  const { rows } = await query(
+    `SELECT COUNT(*) as count FROM otp_tokens WHERE phone = $1 AND created_at > NOW() - INTERVAL '1 hour'`,
+    [phone]
+  );
+  return parseInt(rows[0].count, 10) < limit;
 }
 
 module.exports = { createAndSendOtp, verifyOtp, checkOtpRateLimit };
