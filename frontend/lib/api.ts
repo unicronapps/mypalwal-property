@@ -1,0 +1,90 @@
+import axios from 'axios';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
+const api = axios.create({
+  baseURL: API_URL,
+  withCredentials: true, // Send httpOnly cookies (refresh token)
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Attach access token from memory to every request
+api.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    const token = window.__accessToken;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+  return config;
+});
+
+// On 401: attempt token refresh, then retry original request
+let isRefreshing = false;
+let refreshQueue: Array<(token: string) => void> = [];
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const original = error.config;
+
+    if (error.response?.status === 401 && !original._retry) {
+      original._retry = true;
+
+      if (isRefreshing) {
+        // Queue this request until refresh completes
+        return new Promise((resolve) => {
+          refreshQueue.push((token: string) => {
+            original.headers.Authorization = `Bearer ${token}`;
+            resolve(api(original));
+          });
+        });
+      }
+
+      isRefreshing = true;
+      try {
+        const { data } = await axios.post(
+          `${API_URL}/api/auth/refresh`,
+          {},
+          { withCredentials: true }
+        );
+        const newToken = data.data.accessToken;
+
+        if (typeof window !== 'undefined') {
+          window.__accessToken = newToken;
+        }
+
+        refreshQueue.forEach((cb) => cb(newToken));
+        refreshQueue = [];
+
+        original.headers.Authorization = `Bearer ${newToken}`;
+        return api(original);
+      } catch {
+        refreshQueue = [];
+        if (typeof window !== 'undefined') {
+          window.__accessToken = undefined;
+        }
+        // Redirect to login if refresh fails
+        if (typeof window !== 'undefined') {
+          window.location.href = '/auth/login';
+        }
+        return Promise.reject(error);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+// Type augmentation for window
+declare global {
+  interface Window {
+    __accessToken?: string;
+  }
+}
+
+export default api;
