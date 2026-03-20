@@ -1,6 +1,6 @@
 # Build Progress
 
-Last updated: 2026-03-19
+Last updated: 2026-03-20
 
 ## Phase 1 — Foundation
 ### Backend
@@ -140,7 +140,44 @@ Last updated: 2026-03-19
 - [x] /dealer/[id] page (S04) — SSR, dealer info + verified badge, listings grid
 
 ## Phase 5 — Admin Panel
-[add when Phase 4 complete]
+### Backend
+- [x] GET /api/admin/stats (user counts, property counts by status, monthly revenue, active boosts)
+- [x] GET /api/admin/properties (all listings, search/filter, status filter, pagination)
+- [x] PATCH /api/admin/properties/:id/approve (set active, notify owner)
+- [x] PATCH /api/admin/properties/:id/reject (set deleted, reason, notify owner)
+- [x] PATCH /api/admin/properties/:id/verify (toggle is_verified_property)
+- [x] GET /api/admin/users (search by name/phone/email, role filter, pagination)
+- [x] PATCH /api/admin/users/:id/ban (toggle ban, deactivate listings on ban)
+- [x] PATCH /api/admin/users/:id/role (change between user/dealer, never admin)
+- [x] PATCH /api/admin/dealers/:id/verify (toggle is_verified_dealer)
+- [x] GET /api/admin/reports (join properties + users, status filter, pagination)
+- [x] PATCH /api/admin/reports/:id (dismiss / remove listing / ban poster — transactional)
+- [x] GET /api/admin/payments (all payments joined with users, revenue metrics)
+- [x] POST /api/admin/boost/grant (admin-granted free boost, transactional)
+- [x] GET /api/admin/analytics (listings by type/city/month, enquiries by month, top viewed, user growth)
+
+### Frontend
+- [x] Admin layout with dark sidebar nav (/app/admin/layout.tsx)
+- [x] Admin Dashboard page (S26) — stat cards, recent listings/users/payments (/app/admin/page.tsx)
+- [x] Manage Listings page (S27) — table, status tabs, search, bulk actions, approve/reject/verify/delete (/app/admin/listings/page.tsx)
+- [x] Manage Users page (S28) — table, role tabs, search, ban/unban modal, role dropdown (/app/admin/users/page.tsx)
+- [x] Manage Dealers page (S29) — dealer table, verified toggle, ban, profile link (/app/admin/dealers/page.tsx)
+- [x] Reported Listings page (S30) — cards, status tabs, dismiss/remove/ban actions (/app/admin/reports/page.tsx)
+- [x] Payments page (S31) — revenue cards, payments table, grant boost modal (/app/admin/payments/page.tsx)
+- [x] Analytics page (S32) — recharts donut/bar/line charts, top viewed table, top cities table (/app/admin/analytics/page.tsx)
+- [x] Navbar already has admin link (role-aware)
+
+### Files created/modified
+- backend/src/routes/admin.js (rewritten — 14 endpoints)
+- frontend/app/admin/layout.tsx
+- frontend/app/admin/page.tsx
+- frontend/app/admin/listings/page.tsx
+- frontend/app/admin/users/page.tsx
+- frontend/app/admin/dealers/page.tsx
+- frontend/app/admin/reports/page.tsx
+- frontend/app/admin/payments/page.tsx
+- frontend/app/admin/analytics/page.tsx
+- frontend/package.json (added recharts)
 
 ## Phase 6 — Notifications + Polish
 [add when Phase 5 complete]
