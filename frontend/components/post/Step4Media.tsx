@@ -20,12 +20,13 @@ interface Props {
   onPropertyCreated: (id: string) => void;
   onNext: () => void;
   onBack: () => void;
+  existingPropertyId?: string; // set in edit mode — skips POST /api/properties
 }
 
-export default function Step4Media({ form, onChange, onPropertyCreated, onNext, onBack }: Props) {
+export default function Step4Media({ form, onChange, onPropertyCreated, onNext, onBack, existingPropertyId }: Props) {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isCreating, setIsCreating] = useState(false);
-  const [propertyId, setPropertyId] = useState<string | null>(null);
+  const [propertyId, setPropertyId] = useState<string | null>(existingPropertyId || null);
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 

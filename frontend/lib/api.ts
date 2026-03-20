@@ -4,7 +4,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 const api = axios.create({
   baseURL: API_URL,
-  withCredentials: true, // Send httpOnly cookies (refresh token)
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -30,11 +30,15 @@ api.interceptors.response.use(
   async (error) => {
     const original = error.config;
 
+    // Don't intercept refresh or auth calls — let them fail normally
+    if (original?.url?.includes('/api/auth/')) {
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401 && !original._retry) {
       original._retry = true;
 
       if (isRefreshing) {
-        // Queue this request until refresh completes
         return new Promise((resolve) => {
           refreshQueue.push((token: string) => {
             original.headers.Authorization = `Bearer ${token}`;
@@ -66,10 +70,6 @@ api.interceptors.response.use(
         if (typeof window !== 'undefined') {
           window.__accessToken = undefined;
         }
-        // Redirect to login if refresh fails
-        if (typeof window !== 'undefined') {
-          window.location.href = '/auth/login';
-        }
         return Promise.reject(error);
       } finally {
         isRefreshing = false;
@@ -80,7 +80,6 @@ api.interceptors.response.use(
   }
 );
 
-// Type augmentation for window
 declare global {
   interface Window {
     __accessToken?: string;

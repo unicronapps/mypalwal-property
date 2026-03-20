@@ -1,6 +1,6 @@
 # Build Progress
 
-Last updated: [DATE]
+Last updated: 2026-03-19
 
 ## Phase 1 — Foundation
 ### Backend
@@ -71,10 +71,73 @@ Last updated: [DATE]
 
 
 ## Phase 3 — User Dashboard
-[add when Phase 2 complete]
+### Database
+- [x] Migration 003_activity.sql (enquiries, notifications, reports tables)
+
+### Backend — Users routes (/api/users)
+- [x] GET /api/users/me (profile + listing count + enquiry stats)
+- [x] PUT /api/users/me (update name, agency_name, bio)
+- [x] DELETE /api/users/me (soft delete — ban + null PII + deactivate listings)
+- [x] POST /api/users/me/avatar (presign S3 upload for avatar)
+- [x] PUT /api/users/me/password (no-op — OTP-only auth)
+- [x] GET /api/users/:id/profile (public dealer profile, 404 if role=user)
+- [x] POST /api/users/me/device-token (upsert FCM token with platform)
+
+### Backend — Enquiries routes (/api/enquiries)
+- [x] POST /api/enquiries (rate limit 2/property/24h, copy buyer info, WhatsApp notification, DB notification)
+- [x] GET /api/enquiries/received (paginated, newest first, join property title + thumbnail)
+- [x] GET /api/enquiries/sent (paginated, join property info + location)
+- [x] PATCH /api/enquiries/:id/status (owner only — new/replied/closed)
+- [x] GET /api/enquiries/contact/:propertyId (phone, whatsapp, canEnquire)
+- [x] GET /api/enquiries/received/stats (group by property, counts by status)
+
+### Backend — Visits routes (/api/visits)
+- [x] GET /api/visits/mine (distinct properties visited, latest visit, paginated)
+- [x] GET /api/visits/property/:id (daily view counts for chart, owner only)
+- [x] GET /api/visits/dealer/summary (total views, recent 7d views, top listing)
+
+### Frontend — Dashboard
+- [x] Dashboard layout with sidebar nav + mobile hamburger drawer
+- [x] Navbar updated with Dashboard link
+- [x] Dashboard home page (S14) — stats row, recent listings, recent leads, recently viewed
+- [x] My Listings page (S15) — status tabs, edit/sold/delete/boost actions, delete confirm modal, pagination
+- [x] Edit Property page (S16) — 5-step form pre-filled, PATCH on save
+- [x] Leads Received page (S17) — filter tabs, WhatsApp/call buttons, mark replied/closed
+- [x] Enquiries Sent page (S18) — sent enquiries with re-enquire link
+- [x] Visit History page (S19) — grid of visited properties with viewed_at
+- [x] Account Settings page (S21) — avatar upload, profile edit, delete account with "type DELETE" confirmation
 
 ## Phase 4 — Dealer Features
-[add when Phase 3 complete]
+### Database
+- [x] Migration 004_payments.sql (plans, subscriptions, boosts, payments tables)
+- [x] Seed plans table (Free/Basic/Pro/Unlimited)
+- [x] Add is_boosted + boost_expires_at columns to properties
+
+### Backend — Payments routes (/api/payments)
+- [x] GET /api/payments/plans (all active plans)
+- [x] GET /api/payments/subscription/status (active sub + listings used vs limit)
+- [x] POST /api/payments/order (create Razorpay order — subscription or boost)
+- [x] POST /api/payments/verify (verify Razorpay signature, activate sub/boost)
+- [x] POST /api/payments/webhook (payment.failed, refund.created events)
+- [x] GET /api/payments/history (paginated payment history)
+
+### Backend — Subscription enforcement
+- [x] POST /api/properties checks listing limit before creating (403 LISTING_LIMIT_REACHED)
+- [x] GET /api/users/me includes active subscription + listing_limit
+
+### Backend — Dealer analytics (visits routes)
+- [x] GET /api/visits/property/:id returns daily view counts for chart
+- [x] GET /api/visits/dealer/summary returns total views, 7d views, top listing
+
+### Frontend — Dashboard (Dealer)
+- [x] Dashboard layout updated with dealer nav section (role-aware)
+- [x] Dealer Dashboard page (S22) — stats, subscription card, performance table, quick actions
+- [x] Analytics page (S23) — property selector, CSS bar chart (no external deps), range toggle, stats cards, comparison table
+- [x] Boost Listing page (S24) — listing selector, 3 boost packs, Razorpay checkout integration
+- [x] Subscription Plans page (S25) — current plan banner, 4 plan cards, Razorpay upgrade flow, payment history table
+
+### Frontend — Public Dealer Profile
+- [x] /dealer/[id] page (S04) — SSR, dealer info + verified badge, listings grid
 
 ## Phase 5 — Admin Panel
 [add when Phase 4 complete]

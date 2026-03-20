@@ -3,8 +3,12 @@ const { query } = require('../config/db');
 const axios = require('axios');
 
 const OTP_EXPIRY_MINUTES = parseInt(process.env.OTP_EXPIRY_MINUTES || '10', 10);
-const DUMMY_PHONE = process.env.DUMMY_PHONE || '9999999999';
 const DUMMY_OTP = process.env.DUMMY_OTP || '123456';
+
+// Any phone matching 999999999X (0-9) is a dummy test account
+function isDummyPhone(phone) {
+  return /^999999999\d$/.test(phone);
+}
 
 function generateOtp() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -15,7 +19,7 @@ function hashOtp(otp) {
 }
 
 async function sendOtpViaMSG91(phone, otp) {
-  if (phone === DUMMY_PHONE) return true;
+  if (isDummyPhone(phone)) return true;
 
   const authKey = process.env.MSG91_AUTH_KEY;
   if (!authKey) {
@@ -41,7 +45,7 @@ async function sendOtpViaMSG91(phone, otp) {
 }
 
 async function createAndSendOtp(phone, purpose) {
-  const otp = phone === DUMMY_PHONE ? DUMMY_OTP : generateOtp();
+  const otp = isDummyPhone(phone) ? DUMMY_OTP : generateOtp();
   const otpHash = hashOtp(otp);
   const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
 
@@ -81,7 +85,7 @@ async function verifyOtp(phone, otp, purpose) {
 }
 
 async function checkOtpRateLimit(phone) {
-  if (phone === DUMMY_PHONE) return true;
+  if (isDummyPhone(phone)) return true;
   const limit = parseInt(process.env.OTP_RATE_LIMIT || '3', 10);
   const { rows } = await query(
     `SELECT COUNT(*) as count FROM otp_tokens WHERE phone = $1 AND created_at > NOW() - INTERVAL '1 hour'`,

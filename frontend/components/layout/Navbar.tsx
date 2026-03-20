@@ -24,9 +24,7 @@ export default function Navbar() {
               <div className="w-20 h-8 bg-gray-100 rounded-lg animate-pulse" />
             ) : isAuthenticated && user ? (
               <>
-                {user.role === 'dealer' && (
-                  <Link href="/dealer/listings" className="text-sm text-gray-600 hover:text-gray-900">My Listings</Link>
-                )}
+                <Link href="/dashboard" className="text-sm text-gray-600 hover:text-gray-900">Dashboard</Link>
                 {user.role === 'admin' && (
                   <Link href="/admin" className="text-sm text-gray-600 hover:text-gray-900">Admin</Link>
                 )}

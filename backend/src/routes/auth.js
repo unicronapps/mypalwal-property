@@ -26,7 +26,7 @@ function setRefreshCookie(res, token) {
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000,
-    path: '/api/auth/refresh',
+    path: '/',
   });
 }
 
@@ -154,7 +154,7 @@ router.post('/refresh', async (req, res) => {
 
 // POST /api/auth/logout
 router.post('/logout', (req, res) => {
-  res.clearCookie('refresh_token', { path: '/api/auth/refresh' });
+  res.clearCookie('refresh_token', { path: '/' });
   return res.json({ success: true, data: { message: 'Logged out successfully' } });
 });
 

@@ -26,7 +26,7 @@
 - 5-char alphanumeric property_id (e.g. A3K9P) — unique, collision-checked on insert
 - FCM device_tokens table exists for future React Native — platform field: web/ios/android
 - Notifications written to DB first, then FCM push sent — both always happen together
-- Supabase RLS enabled on all tables
+- No RLS — all access control in Express middleware. DB is portable (swap DATABASE_URL only)
 
 ## Region-specific fields (Haryana/NCR market)
 - registry_status: registered / unregistered / under_process
@@ -36,10 +36,14 @@
 - dist_highway_km (agricultural land + farmhouse): numeric
 
 ## Current Phase
-[UPDATE THIS AFTER EVERY PHASE]
-Phase 2 — IN PROGRESS
+Phase 4 — COMPLETE
 
 ## Repo Structure
-[UPDATE THIS AS YOU BUILD]
 /frontend — Next.js app
 /backend — Node.js Express app
+/backend/migrations — SQL migration files (001, 002, 003, 004)
+/backend/src/routes — Express route handlers
+/backend/src/services — Business logic (otp, notification, s3)
+/backend/src/config — DB pool, S3 client
+/frontend/app/dashboard — User dashboard pages
+/frontend/components — Reusable UI components
