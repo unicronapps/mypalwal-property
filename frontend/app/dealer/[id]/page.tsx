@@ -19,10 +19,20 @@ async function getDealer(id: string) {
 
 export async function generateMetadata({ params }: { params: { id: string } }) {
   const dealer = await getDealer(params.id);
-  if (!dealer) return { title: 'Dealer Not Found' };
+  if (!dealer) return { title: 'Dealer Not Found — PropertyX' };
+  const name = dealer.name || 'Dealer';
+  const agency = dealer.agency_name ? ` (${dealer.agency_name})` : '';
+  const title = `${name}${agency} — Real Estate Dealer | PropertyX`;
+  const description = `${name}${agency} — ${dealer.total_listings} active listings on PropertyX. View properties and contact directly.`;
   return {
-    title: `${dealer.name || 'Dealer'} — PropertyX`,
-    description: `${dealer.agency_name || dealer.name || 'Dealer'} — ${dealer.total_listings} active listings on PropertyX`,
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      ...(dealer.avatar_url ? { images: [{ url: dealer.avatar_url }] } : {}),
+    },
   };
 }
 

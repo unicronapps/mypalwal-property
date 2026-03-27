@@ -15,12 +15,34 @@ async function getProperty(id: string) {
   }
 }
 
+const TYPE_LABELS: Record<string, string> = {
+  flat: 'Flat', house: 'House', plot: 'Plot', commercial: 'Commercial Space',
+  agricultural: 'Agricultural Land', farmhouse: 'Farmhouse', villa: 'Villa', pg: 'PG',
+};
+const CATEGORY_LABELS: Record<string, string> = { sale: 'Sale', rent: 'Rent', lease: 'Lease', pg: 'PG' };
+
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
-  const property = await getProperty(params.id);
-  if (!property) return { title: 'Property Not Found — PropertyX' };
+  const p = await getProperty(params.id);
+  if (!p) return { title: 'Property Not Found — PropertyX' };
+
+  const typeLabel = TYPE_LABELS[p.property_type] || p.property_type;
+  const catLabel = CATEGORY_LABELS[p.category] || p.category;
+  const locality = p.location?.locality || '';
+  const city = p.location?.city || '';
+  const locationStr = [locality, city].filter(Boolean).join(', ');
+  const title = `${p.title} — ${typeLabel} for ${catLabel} in ${locationStr} | PropertyX`;
+  const description = p.description?.slice(0, 150) || `${typeLabel} for ${catLabel} in ${locationStr}. View details, photos, and contact the owner on PropertyX.`;
+  const coverPhoto = p.media?.find((m: any) => m.is_cover)?.url || p.media?.[0]?.url || null;
+
   return {
-    title: `${property.title} — ${property.location?.city || ''} | PropertyX`,
-    description: property.description?.slice(0, 160) || `${property.property_type} for ${property.category} in ${property.location?.city}`,
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      ...(coverPhoto ? { images: [{ url: coverPhoto, width: 1200, height: 630 }] } : {}),
+    },
   };
 }
 

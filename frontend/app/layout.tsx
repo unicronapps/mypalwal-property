@@ -8,8 +8,13 @@ import Footer from '@/components/layout/Footer';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'PropertyX — Find Properties in Tier 2 Cities',
-  description: 'Buy, sell, and rent properties across tier 2 Indian cities. Verified listings, direct owner contact.',
+  title: 'PropertyX — Find Properties in Tier 2 Cities | Haryana Real Estate',
+  description: 'Buy, sell, and rent properties across Haryana & tier 2 Indian cities. Verified listings in Gurugram, Faridabad, Panipat, Karnal, Rohtak & more. Direct owner contact.',
+  openGraph: {
+    title: 'PropertyX — Find Properties in Tier 2 Cities',
+    description: 'Buy, sell, and rent properties across Haryana & tier 2 Indian cities. Verified listings, direct owner contact.',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({

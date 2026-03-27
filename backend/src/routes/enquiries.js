@@ -234,6 +234,29 @@ router.patch("/:id/status", verifyToken, async (req, res) => {
     req.params.id,
   ]);
 
+  // Send notification to buyer when owner replies
+  if (status === 'replied') {
+    try {
+      const { rows: enqRows } = await query(
+        `SELECT e.buyer_id, e.property_id, p.title, p.property_id AS pid
+         FROM enquiries e JOIN properties p ON p.id = e.property_id
+         WHERE e.id = $1`,
+        [req.params.id]
+      );
+      if (enqRows.length) {
+        await sendNotification({
+          userId: enqRows[0].buyer_id,
+          type: 'enquiry_replied',
+          title: 'Enquiry Replied',
+          body: `The owner replied to your enquiry on "${enqRows[0].title}" (${enqRows[0].pid}).`,
+          data: { property_id: enqRows[0].property_id, enquiry_id: req.params.id },
+        });
+      }
+    } catch (err) {
+      console.error('Enquiry replied notification error:', err.message);
+    }
+  }
+
   return res.json({
     success: true,
     data: { message: "Status updated" },
