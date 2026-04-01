@@ -31,7 +31,7 @@ CREATE INDEX IF NOT EXISTS idx_enquiries_created_at  ON enquiries (created_at DE
 CREATE INDEX IF NOT EXISTS idx_enquiries_rate_limit  ON enquiries (buyer_id, property_id, created_at);
 
 -- ─────────────────────────────────────────────────────
--- NOTIFICATIONS
+-- NOTIFICATIONS -- we don't need this
 -- ─────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS notifications (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),

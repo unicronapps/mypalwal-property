@@ -3,7 +3,6 @@ const router = express.Router();
 const crypto = require("crypto");
 const { query, getClient } = require("../config/db");
 const { verifyToken } = require("../middleware/auth");
-const { sendNotification } = require("../services/notification");
 
 // Razorpay helper — lazy-init so app boots even without keys
 let razorpayInstance = null;
@@ -22,7 +21,7 @@ function getRazorpay() {
 router.get("/plans", async (req, res) => {
   const { rows } = await query(
     `SELECT id, name, price, listing_limit, duration_days, features, display_order
-     FROM plans WHERE is_active = true ORDER BY display_order ASC`
+     FROM plans WHERE is_active = true ORDER BY display_order ASC`,
   );
   return res.json({ success: true, data: { plans: rows } });
 });
@@ -37,7 +36,7 @@ router.get("/subscription/status", verifyToken, async (req, res) => {
      JOIN plans p ON p.id = s.plan_id
      WHERE s.user_id = $1 AND s.status = 'active' AND s.expires_at > NOW()
      ORDER BY s.expires_at DESC LIMIT 1`,
-    [req.user.id]
+    [req.user.id],
   );
 
   const subscription = subRows[0] || null;
@@ -45,7 +44,7 @@ router.get("/subscription/status", verifyToken, async (req, res) => {
   // Current listing count (non-deleted)
   const { rows: countRow } = await query(
     `SELECT COUNT(*) FROM properties WHERE owner_id = $1 AND status != 'inactive'`,
-    [req.user.id]
+    [req.user.id],
   );
   const listingsUsed = parseInt(countRow[0].count, 10);
 
@@ -94,7 +93,7 @@ router.post("/order", verifyToken, async (req, res) => {
     }
     const { rows: planRows } = await query(
       `SELECT id, name, price, listing_limit, duration_days FROM plans WHERE id = $1 AND is_active = true`,
-      [plan_id]
+      [plan_id],
     );
     if (!planRows.length) {
       return res.status(404).json({
@@ -112,7 +111,11 @@ router.post("/order", verifyToken, async (req, res) => {
       });
     }
     amount = plan.price;
-    metadata = { plan_id: plan.id, plan_name: plan.name, duration_days: plan.duration_days };
+    metadata = {
+      plan_id: plan.id,
+      plan_name: plan.name,
+      duration_days: plan.duration_days,
+    };
   }
 
   if (type === "boost") {
@@ -126,7 +129,7 @@ router.post("/order", verifyToken, async (req, res) => {
     // Validate ownership
     const { rows: propRows } = await query(
       `SELECT id, property_id, title, owner_id FROM properties WHERE id = $1`,
-      [property_id]
+      [property_id],
     );
     if (!propRows.length) {
       return res.status(404).json({
@@ -147,7 +150,11 @@ router.post("/order", verifyToken, async (req, res) => {
     const days = duration_days || 7;
     const boostPricing = { 7: 199, 15: 349, 30: 599 };
     amount = boostPricing[days] || boostPricing[7];
-    metadata = { property_id, property_pid: propRows[0].property_id, duration_days: days };
+    metadata = {
+      property_id,
+      property_pid: propRows[0].property_id,
+      duration_days: days,
+    };
   }
 
   // Create Razorpay order
@@ -164,7 +171,7 @@ router.post("/order", verifyToken, async (req, res) => {
     await query(
       `INSERT INTO payments (user_id, type, razorpay_order_id, amount, metadata)
        VALUES ($1, $2, $3, $4, $5)`,
-      [req.user.id, type, order.id, amount, JSON.stringify(metadata)]
+      [req.user.id, type, order.id, amount, JSON.stringify(metadata)],
     );
 
     return res.json({
@@ -189,12 +196,14 @@ router.post("/order", verifyToken, async (req, res) => {
 
 // ─── POST /api/payments/verify — verify Razorpay signature ───
 router.post("/verify", verifyToken, async (req, res) => {
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
+    req.body;
 
   if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
     return res.status(400).json({
       success: false,
-      message: "razorpay_order_id, razorpay_payment_id, razorpay_signature required",
+      message:
+        "razorpay_order_id, razorpay_payment_id, razorpay_signature required",
       code: "VALIDATION_ERROR",
     });
   }
@@ -216,7 +225,7 @@ router.post("/verify", verifyToken, async (req, res) => {
   // Get payment record
   const { rows: paymentRows } = await query(
     `SELECT id, type, metadata FROM payments WHERE razorpay_order_id = $1 AND user_id = $2`,
-    [razorpay_order_id, req.user.id]
+    [razorpay_order_id, req.user.id],
   );
   if (!paymentRows.length) {
     return res.status(404).json({
@@ -236,7 +245,7 @@ router.post("/verify", verifyToken, async (req, res) => {
     // Update payment status
     await client.query(
       `UPDATE payments SET status = 'paid', razorpay_payment_id = $1, updated_at = NOW() WHERE id = $2`,
-      [razorpay_payment_id, payment.id]
+      [razorpay_payment_id, payment.id],
     );
 
     if (payment.type === "subscription") {
@@ -244,25 +253,22 @@ router.post("/verify", verifyToken, async (req, res) => {
       await client.query(
         `INSERT INTO subscriptions (user_id, plan_id, razorpay_order_id, razorpay_payment_id, amount, starts_at, expires_at)
          VALUES ($1, $2, $3, $4, $5, NOW(), NOW() + INTERVAL '1 day' * $6)`,
-        [req.user.id, meta.plan_id, razorpay_order_id, razorpay_payment_id, payment.metadata.price || 0, durationDays]
+        [
+          req.user.id,
+          meta.plan_id,
+          razorpay_order_id,
+          razorpay_payment_id,
+          payment.metadata.price || 0,
+          durationDays,
+        ],
       );
       // Expire any older active subscriptions
       await client.query(
         `UPDATE subscriptions SET status = 'expired'
          WHERE user_id = $1 AND status = 'active'
            AND id != (SELECT id FROM subscriptions WHERE user_id = $1 AND status = 'active' ORDER BY expires_at DESC LIMIT 1)`,
-        [req.user.id]
+        [req.user.id],
       );
-
-      try {
-        await sendNotification({
-          userId: req.user.id,
-          type: "subscription_active",
-          title: "Subscription activated",
-          body: `Your ${meta.plan_name} plan is now active for ${durationDays} days.`,
-          data: { plan_id: meta.plan_id },
-        });
-      } catch {}
     }
 
     if (payment.type === "boost") {
@@ -270,22 +276,20 @@ router.post("/verify", verifyToken, async (req, res) => {
       await client.query(
         `INSERT INTO boosts (property_id, user_id, razorpay_order_id, razorpay_payment_id, amount, duration_days, starts_at, expires_at)
          VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW() + INTERVAL '1 day' * $7)`,
-        [meta.property_id, req.user.id, razorpay_order_id, razorpay_payment_id, 0, durationDays, durationDays]
+        [
+          meta.property_id,
+          req.user.id,
+          razorpay_order_id,
+          razorpay_payment_id,
+          0,
+          durationDays,
+          durationDays,
+        ],
       );
       await client.query(
         `UPDATE properties SET is_boosted = true, boost_expires_at = NOW() + INTERVAL '1 day' * $1 WHERE id = $2`,
-        [durationDays, meta.property_id]
+        [durationDays, meta.property_id],
       );
-
-      try {
-        await sendNotification({
-          userId: req.user.id,
-          type: "boost_active",
-          title: "Listing boosted",
-          body: `Your listing is now boosted for ${durationDays} days.`,
-          data: { property_id: meta.property_id },
-        });
-      } catch {}
     }
 
     await client.query("COMMIT");
@@ -316,7 +320,9 @@ router.post("/webhook", async (req, res) => {
       .update(JSON.stringify(req.body))
       .digest("hex");
     if (signature !== expectedSig) {
-      return res.status(400).json({ success: false, message: "Invalid signature" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid signature" });
     }
   }
 
@@ -328,7 +334,7 @@ router.post("/webhook", async (req, res) => {
     if (orderId) {
       await query(
         `UPDATE payments SET status = 'failed', updated_at = NOW() WHERE razorpay_order_id = $1`,
-        [orderId]
+        [orderId],
       );
     }
   }
@@ -338,7 +344,7 @@ router.post("/webhook", async (req, res) => {
     if (paymentId) {
       await query(
         `UPDATE payments SET status = 'refunded', updated_at = NOW() WHERE razorpay_payment_id = $1`,
-        [paymentId]
+        [paymentId],
       );
     }
   }
@@ -355,14 +361,14 @@ router.get("/history", verifyToken, async (req, res) => {
 
   const countRes = await query(
     `SELECT COUNT(*) FROM payments WHERE user_id = $1`,
-    [req.user.id]
+    [req.user.id],
   );
 
   const { rows } = await query(
     `SELECT id, type, razorpay_order_id, razorpay_payment_id, amount, currency, status, metadata, created_at
      FROM payments WHERE user_id = $1
      ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
-    [req.user.id, limitNum, offset]
+    [req.user.id, limitNum, offset],
   );
 
   return res.json({

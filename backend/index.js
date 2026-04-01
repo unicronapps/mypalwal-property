@@ -7,7 +7,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3001",
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
     credentials: true,
   }),
 );
@@ -21,7 +21,6 @@ app.use("/api/media", require("./src/routes/media"));
 app.use("/api/users", require("./src/routes/users"));
 app.use("/api/enquiries", require("./src/routes/enquiries"));
 app.use("/api/visits", require("./src/routes/visits"));
-app.use("/api/notifications", require("./src/routes/notifications"));
 app.use("/api/payments", require("./src/routes/payments"));
 app.use("/api/admin", require("./src/routes/admin"));
 app.use("/api/search", require("./src/routes/search"));
@@ -52,8 +51,4 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Backend running on port ${PORT}`);
-
-  // Start cron jobs
-  const { startNotificationCrons } = require('./src/cron/notificationCron');
-  startNotificationCrons();
 });

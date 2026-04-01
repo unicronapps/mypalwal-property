@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 const { query } = require("../config/db");
 const { verifyToken } = require("../middleware/auth");
-const { sendNotification } = require("../services/notification");
 
 // POST /api/enquiries — submit enquiry (buyer, requires login)
 router.post("/", verifyToken, async (req, res) => {
@@ -84,23 +83,6 @@ router.post("/", verifyToken, async (req, res) => {
       message || null,
     ],
   );
-
-  // Create notification for property owner
-  try {
-    await sendNotification({
-      userId: property.owner_id,
-      type: "new_enquiry",
-      title: "New enquiry on your property",
-      body: `${buyer.name || buyer.phone} enquired about "${property.title}" (${property.property_id})`,
-      data: {
-        enquiry_id: enquiry[0].id,
-        property_id: property.id,
-        property_pid: property.property_id,
-      },
-    });
-  } catch (err) {
-    console.error("Notification error:", err.message);
-  }
 
   // WhatsApp message to poster (wa.me link logged for now)
   if (property.owner_phone) {
@@ -235,25 +217,16 @@ router.patch("/:id/status", verifyToken, async (req, res) => {
   ]);
 
   // Send notification to buyer when owner replies
-  if (status === 'replied') {
+  if (status === "replied") {
     try {
       const { rows: enqRows } = await query(
         `SELECT e.buyer_id, e.property_id, p.title, p.property_id AS pid
          FROM enquiries e JOIN properties p ON p.id = e.property_id
          WHERE e.id = $1`,
-        [req.params.id]
+        [req.params.id],
       );
-      if (enqRows.length) {
-        await sendNotification({
-          userId: enqRows[0].buyer_id,
-          type: 'enquiry_replied',
-          title: 'Enquiry Replied',
-          body: `The owner replied to your enquiry on "${enqRows[0].title}" (${enqRows[0].pid}).`,
-          data: { property_id: enqRows[0].property_id, enquiry_id: req.params.id },
-        });
-      }
     } catch (err) {
-      console.error('Enquiry replied notification error:', err.message);
+      console.error("Enquiry replied notification error:", err.message);
     }
   }
 

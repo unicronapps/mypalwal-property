@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS properties (
   property_type     TEXT NOT NULL CHECK (property_type IN (
                       'flat','house','plot','commercial','agricultural',
                       'farmhouse','pg','warehouse','shop','office',
-                      'villa','independent_house'
+                      'villa','independent_house', 'factory'
                     )),
   category          TEXT NOT NULL CHECK (category IN ('sale', 'rent', 'lease', 'pg')),
   price             NUMERIC NOT NULL CHECK (price >= 0),
@@ -32,10 +32,10 @@ CREATE TABLE IF NOT EXISTS properties (
   status            TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','inactive','pending','sold','rented')),
   is_verified       BOOLEAN NOT NULL DEFAULT FALSE,
   is_featured       BOOLEAN NOT NULL DEFAULT FALSE,
-  possession_status TEXT CHECK (possession_status IN ('ready','under_construction','new_launch')),
+  possession_status TEXT CHECK (possession_status IN ('ready','under_construction','new_launch', 'pre_launch')),
 
   -- Contact preferences
-  contact_call      BOOLEAN NOT NULL DEFAULT TRUE,
+  contact_call      BOOLEAN NOT NULL DEFAULT FALSE,
   contact_whatsapp  BOOLEAN NOT NULL DEFAULT FALSE,
   contact_enquiry   BOOLEAN NOT NULL DEFAULT TRUE,
 
