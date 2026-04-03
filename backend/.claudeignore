@@ -1,0 +1,97 @@
+# Dependencies
+node_modules/
+jspm_packages/
+bower_components/
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+.nuxt/
+.cache/
+coverage/
+.vercel/
+.netlify/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Lock files (optional — keep if needed)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Docker (optional)
+Dockerfile*
+docker-compose*
+
+# Documentation (optional)
+docs/
+*.md
+
+# Public assets (optional large files)
+public/uploads/
+uploads/
+assets/
+
+# Generated files
+*.generated.*
+*.gen.*
+
+# Large data files
+*.csv
+*.jsonl
+*.parquet
+*.sqlite
+*.db
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Storybook
+storybook-static/
+
+# Expo / React Native (if applicable)
+.expo/
+.expo-shared/
+
+# Misc
+*.zip
+*.tar
+*.gz
+*.rar

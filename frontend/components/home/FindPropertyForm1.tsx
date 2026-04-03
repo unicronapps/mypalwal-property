@@ -1,25 +1,32 @@
 "use client";
 
 /*
- * BACKEND API REQUIRED:
  * POST /api/leads/find-property
  * Body (JSON):
  *   name          string    required
  *   phone         string    required  (10-digit Indian mobile)
  *   city          string    required
- *   requirement   string    required  free-text (what they're looking for)
- *   localities    string[]  optional  selected localities from the list
- *   otherLocality string    optional  free-text when user picks "Other"
- *   budgetMin     string    optional  e.g. "20L", "1Cr"
- *   budgetMax     string    optional  e.g. "50L", "2Cr"
+ *   requirement   string    required
+ *   propertyType  string    optional  flat | house | plot | commercial | villa
+ *   bhkConfig     string[]  optional  ["1BHK","2BHK"] — only for flat/house/villa
+ *   possession    string    optional  ready | under_construction | any
+ *   localities    string[]  optional
+ *   otherLocality string    optional
+ *   budgetMin     string    optional
+ *   budgetMax     string    optional
  * Response: { success: true, id: <uuid> }
- * Auth: none (public endpoint)
+ *
+ * ── New DB columns needed ─────────────────────────────────────────────────────
+ *   property_type  TEXT
+ *   bhk_config     TEXT[]
+ *   possession     TEXT
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const CITIES = [
   "Gurugram",
@@ -31,6 +38,50 @@ const CITIES = [
   "Sonipat",
   "Hisar",
   "Other",
+];
+
+const PROPERTY_TYPES = [
+  {
+    value: "flat",
+    label: "Flat / Apartment",
+    emoji: "🏢",
+    hint: "Society or builder floor",
+  },
+  {
+    value: "house",
+    label: "Independent House",
+    emoji: "🏡",
+    hint: "Kothi, villa, bungalow",
+  },
+  {
+    value: "plot",
+    label: "Plot / Land",
+    emoji: "🏗️",
+    hint: "Residential or commercial",
+  },
+  {
+    value: "commercial",
+    label: "Commercial",
+    emoji: "🏪",
+    hint: "Shop, office, showroom",
+  },
+  {
+    value: "villa",
+    label: "Villa / Farmhouse",
+    emoji: "🌿",
+    hint: "Gated community or farm",
+  },
+];
+
+// BHK only makes sense for flat, house, villa — not plot/commercial
+const BHK_TYPES = ["flat", "house", "villa"];
+
+const BHK_OPTIONS = ["1 BHK", "2 BHK", "3 BHK", "4 BHK", "4+ BHK"];
+
+const POSSESSION_OPTIONS = [
+  { value: "ready", label: "Ready to Move", emoji: "✅" },
+  { value: "under_construction", label: "Under Construction", emoji: "🏗️" },
+  { value: "any", label: "Doesn't Matter", emoji: "🤷" },
 ];
 
 const LOCALITIES = [
@@ -77,223 +128,216 @@ const BUDGET_BRACKETS = [
   { label: "Flexible", value: "flexible" },
 ];
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+type ErrorType = "network" | "rate_limit" | "server" | "unknown";
+
+function getErrorType(error: unknown): ErrorType {
+  if (typeof navigator !== "undefined" && !navigator.onLine) return "network";
+  if (typeof error === "object" && error !== null) {
+    const status = (error as { response?: { status?: number } }).response
+      ?.status;
+    if (status === 429) return "rate_limit";
+    if (status && status >= 500) return "server";
+  }
+  return "unknown";
+}
 
 function resetFormState() {
   return { name: "", phone: "", city: "", requirement: "" };
 }
 
-// ─── Success Screen ───────────────────────────────────────────────────────────
+// ─── Property Type Picker ─────────────────────────────────────────────────────
 
-function SuccessScreen({
-  name,
-  onClose,
-  onSubmitAnother,
+function PropertyTypePicker({
+  value,
+  onChange,
 }: {
-  name: string;
-  onClose: () => void;
-  onSubmitAnother: () => void;
+  value: string;
+  onChange: (v: string) => void;
 }) {
   return (
-    <div className="flex flex-col items-center text-center py-4 px-2">
-      {/* Animated checkmark ring */}
-      <div className="relative mb-5">
-        <div className="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center">
-          <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
-            <svg
-              className="w-7 h-7 text-green-600"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+    <div>
+      <label className="block text-xs font-medium text-gray-600 mb-2">
+        Property Type
+        <span className="font-normal text-gray-400 ml-1">(optional)</span>
+      </label>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {PROPERTY_TYPES.map((p) => {
+          const isSelected = value === p.value;
+          return (
+            <button
+              key={p.value}
+              type="button"
+              onClick={() => onChange(isSelected ? "" : p.value)}
+              className={`relative flex flex-col items-start gap-0.5 rounded-xl border px-3 py-2.5 text-left transition-all ${
+                isSelected
+                  ? "border-primary-500 bg-primary-50 shadow-sm"
+                  : "border-gray-200 bg-white hover:border-primary-300 hover:bg-gray-50"
+              }`}
             >
-              <path d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-        </div>
-        {/* Subtle pulse ring */}
-        <div className="absolute inset-0 rounded-full border-2 border-green-200 animate-ping opacity-30" />
-      </div>
-
-      <h3 className="text-xl font-semibold text-gray-900 mb-1">
-        You're all set, {name.split(" ")[0]}!
-      </h3>
-      <p className="text-sm text-gray-500 leading-relaxed mb-1">
-        Your property request has been received.
-      </p>
-      <p className="text-sm text-gray-500 leading-relaxed mb-6">
-        Our team will review your requirements and{" "}
-        <span className="text-gray-700 font-medium">
-          call you within 24 hours
-        </span>{" "}
-        with the best matching options.
-      </p>
-
-      {/* Info pill */}
-      <div className="flex items-center gap-2 bg-blue-50 text-blue-700 text-xs font-medium px-4 py-2.5 rounded-full mb-6">
-        <svg
-          className="w-3.5 h-3.5 flex-shrink-0"
-          viewBox="0 0 16 16"
-          fill="currentColor"
-        >
-          <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm.75 10.5h-1.5v-5h1.5v5zm0-6.5h-1.5V3.5h1.5V5z" />
-        </svg>
-        Check your WhatsApp for a confirmation message
-      </div>
-
-      {/* Actions */}
-      <div className="flex flex-col gap-2 w-full">
-        <button
-          onClick={onSubmitAnother}
-          className="w-full bg-primary-600 text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-primary-700 transition-colors"
-        >
-          Submit another request
-        </button>
-        <button
-          onClick={onClose}
-          className="w-full border border-gray-200 text-gray-500 rounded-lg py-2.5 text-sm font-medium hover:bg-gray-50 transition-colors"
-        >
-          Close
-        </button>
+              {isSelected && (
+                <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary-500" />
+              )}
+              <span className="text-xl leading-none mb-1">{p.emoji}</span>
+              <span
+                className={`text-xs font-semibold leading-tight ${isSelected ? "text-primary-700" : "text-gray-800"}`}
+              >
+                {p.label}
+              </span>
+              <span className="text-[10px] text-gray-400 leading-tight">
+                {p.hint}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
 }
 
-// ─── Error Banner ─────────────────────────────────────────────────────────────
+// ─── BHK Picker ───────────────────────────────────────────────────────────────
 
-type ErrorType = "network" | "rate_limit" | "server" | "unknown";
-
-function getErrorContent(type: ErrorType) {
-  switch (type) {
-    case "network":
-      return {
-        title: "No internet connection",
-        message: "Please check your connection and try again.",
-        icon: (
-          <path d="M3 3l18 18M10.584 10.587a2 2 0 002.828 2.83M6.343 6.343A8 8 0 0117.657 17.657M3.106 3.106A15.965 15.965 0 001 12c0 6.075 4.5 11.11 10.379 11.925M12 12v.01" />
-        ),
-      };
-    case "rate_limit":
-      return {
-        title: "Too many requests",
-        message:
-          "You've submitted several requests recently. Please wait a few minutes before trying again.",
-        icon: (
-          <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-        ),
-      };
-    case "server":
-      return {
-        title: "Something went wrong on our end",
-        message: "Our team has been notified. Please try again in a moment.",
-        icon: <path d="M5 12H3a9 9 0 1018 0h-2M12 3v9" />,
-      };
-    default:
-      return {
-        title: "Submission failed",
-        message:
-          "We couldn't send your request. Please try again or call us directly.",
-        icon: (
-          <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-        ),
-      };
-  }
-}
-
-function ErrorBanner({
-  type,
-  onDismiss,
+function BhkPicker({
+  selected,
+  onChange,
 }: {
-  type: ErrorType;
-  onDismiss: () => void;
+  selected: string[];
+  onChange: (v: string[]) => void;
 }) {
-  const { title, message, icon } = getErrorContent(type);
+  function toggle(bhk: string) {
+    onChange(
+      selected.includes(bhk)
+        ? selected.filter((b) => b !== bhk)
+        : [...selected, bhk],
+    );
+  }
 
   return (
-    <div className="flex items-start gap-3 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
-      <div className="flex-shrink-0 mt-0.5">
-        <svg
-          className="w-4 h-4 text-red-500"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          {icon}
-        </svg>
+    <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+      <label className="block text-xs font-medium text-gray-600 mb-2">
+        BHK Configuration
+        <span className="font-normal text-gray-400 ml-1">
+          (pick all that work)
+        </span>
+      </label>
+      <div className="flex flex-wrap gap-2">
+        {BHK_OPTIONS.map((bhk) => {
+          const isSelected = selected.includes(bhk);
+          return (
+            <button
+              key={bhk}
+              type="button"
+              onClick={() => toggle(bhk)}
+              className={`px-4 py-2 rounded-full text-xs font-semibold border transition-all ${
+                isSelected
+                  ? "bg-primary-600 border-primary-600 text-white shadow-sm scale-105"
+                  : "bg-white border-gray-200 text-gray-600 hover:border-primary-300 hover:text-primary-600"
+              }`}
+            >
+              {bhk}
+            </button>
+          );
+        })}
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-red-800">{title}</p>
-        <p className="text-xs text-red-600 mt-0.5 leading-relaxed">{message}</p>
+      {selected.length > 0 && (
+        <p className="mt-1.5 text-xs text-gray-400">
+          {selected.join(", ")} selected ·{" "}
+          <button
+            type="button"
+            onClick={() => onChange([])}
+            className="text-primary-600 hover:underline"
+          >
+            clear
+          </button>
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─── Possession Toggle ────────────────────────────────────────────────────────
+
+function PossessionPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+      <label className="block text-xs font-medium text-gray-600 mb-2">
+        Possession Status
+        <span className="font-normal text-gray-400 ml-1">(optional)</span>
+      </label>
+      <div className="grid grid-cols-3 gap-2">
+        {POSSESSION_OPTIONS.map((p) => {
+          const isSelected = value === p.value;
+          return (
+            <button
+              key={p.value}
+              type="button"
+              onClick={() => onChange(isSelected ? "" : p.value)}
+              className={`flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-center transition-all ${
+                isSelected
+                  ? "border-primary-500 bg-primary-50 shadow-sm"
+                  : "border-gray-200 bg-white hover:border-primary-300 hover:bg-gray-50"
+              }`}
+            >
+              <span className="text-xl leading-none">{p.emoji}</span>
+              <span
+                className={`text-[10px] font-semibold leading-tight ${isSelected ? "text-primary-700" : "text-gray-600"}`}
+              >
+                {p.label}
+              </span>
+            </button>
+          );
+        })}
       </div>
-      <button
-        onClick={onDismiss}
-        className="flex-shrink-0 text-red-400 hover:text-red-600 transition-colors mt-0.5"
-        aria-label="Dismiss"
-      >
-        <svg
-          className="w-4 h-4"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
-        </svg>
-      </button>
     </div>
   );
 }
 
 // ─── Budget Range Picker ──────────────────────────────────────────────────────
 
-interface BudgetPickerProps {
+function BudgetPicker({
+  budgetMin,
+  budgetMax,
+  onChange,
+}: {
   budgetMin: string;
   budgetMax: string;
   onChange: (min: string, max: string) => void;
-}
-
-function BudgetPicker({ budgetMin, budgetMax, onChange }: BudgetPickerProps) {
+}) {
   const minIdx = BUDGET_BRACKETS.findIndex((b) => b.value === budgetMin);
   const maxIdx = BUDGET_BRACKETS.findIndex((b) => b.value === budgetMax);
+  const isFlexible = budgetMin === "flexible";
 
   function handleClick(idx: number) {
-    const isFlexible = BUDGET_BRACKETS[idx].value === "flexible";
-
-    // Flexible is a standalone toggle — clears any range
-    if (isFlexible) {
-      if (budgetMin === "flexible") {
-        onChange("", "");
-      } else {
-        onChange("flexible", "");
-      }
+    const isThisFlexible = BUDGET_BRACKETS[idx].value === "flexible";
+    if (isThisFlexible) {
+      onChange(isFlexible ? "" : "flexible", "");
       return;
     }
-
-    if (!budgetMin || budgetMin === "flexible") {
+    if (!budgetMin || isFlexible) {
       onChange(BUDGET_BRACKETS[idx].value, "");
       return;
     }
     if (budgetMin && !budgetMax) {
       if (idx === minIdx) {
         onChange("", "");
-      } else if (idx < minIdx) {
-        onChange(BUDGET_BRACKETS[idx].value, "");
-      } else {
-        onChange(budgetMin, BUDGET_BRACKETS[idx].value);
+        return;
       }
+      if (idx < minIdx) {
+        onChange(BUDGET_BRACKETS[idx].value, "");
+        return;
+      }
+      onChange(budgetMin, BUDGET_BRACKETS[idx].value);
       return;
     }
     onChange(BUDGET_BRACKETS[idx].value, "");
   }
-
-  const hasSelection = !!budgetMin;
-  const isFlexible = budgetMin === "flexible";
 
   const summaryLabel = isFlexible
     ? "Flexible / open to options"
@@ -305,12 +349,12 @@ function BudgetPicker({ budgetMin, budgetMax, onChange }: BudgetPickerProps) {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex items-center justify-between mb-2">
         <label className="block text-xs font-medium text-gray-600">
           Budget Range
           <span className="font-normal text-gray-400 ml-1">(optional)</span>
         </label>
-        {hasSelection && (
+        {budgetMin && (
           <button
             type="button"
             onClick={() => onChange("", "")}
@@ -320,7 +364,6 @@ function BudgetPicker({ budgetMin, budgetMax, onChange }: BudgetPickerProps) {
           </button>
         )}
       </div>
-
       <div className="flex flex-wrap gap-1.5">
         {BUDGET_BRACKETS.map((b, idx) => {
           const isThisFlexible = b.value === "flexible";
@@ -332,9 +375,8 @@ function BudgetPicker({ budgetMin, budgetMax, onChange }: BudgetPickerProps) {
             maxIdx !== -1 &&
             idx > minIdx &&
             idx < maxIdx;
-          const isActiveFlexible = isThisFlexible && isFlexible;
-          const isActive = isMin || isMax || isInRange || isActiveFlexible;
-
+          const isActive =
+            isMin || isMax || isInRange || (isThisFlexible && isFlexible);
           return (
             <button
               key={b.value}
@@ -353,16 +395,13 @@ function BudgetPicker({ budgetMin, budgetMax, onChange }: BudgetPickerProps) {
           );
         })}
       </div>
-
       <p className="mt-1.5 text-xs text-gray-400">
         {summaryLabel ? (
           <>
             Selected:{" "}
             <span className="text-primary-600 font-medium">{summaryLabel}</span>
             {budgetMin && !budgetMax && !isFlexible && (
-              <span className="text-gray-400 ml-1">
-                — tap another to set max
-              </span>
+              <span className="ml-1">— tap another to set max</span>
             )}
           </>
         ) : (
@@ -395,7 +434,6 @@ function LocalityPicker({
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-
   const filtered = LOCALITIES.filter((l) =>
     l.toLowerCase().includes(query.toLowerCase()),
   );
@@ -437,7 +475,6 @@ function LocalityPicker({
           (optional, pick multiple)
         </span>
       </label>
-
       <div ref={containerRef} className="relative">
         <input
           type="text"
@@ -447,7 +484,6 @@ function LocalityPicker({
           placeholder="Search locality e.g. Omaxe, HUDA…"
           className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
         />
-
         {isOpen && (
           <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
             {filtered.length === 0 && (
@@ -479,11 +515,7 @@ function LocalityPicker({
                         {highlightMatch(loc)}
                       </span>
                       <span
-                        className={`w-4 h-4 rounded flex-shrink-0 border flex items-center justify-center transition-colors ${
-                          isSelected
-                            ? "bg-primary-600 border-primary-600"
-                            : "border-gray-300"
-                        }`}
+                        className={`w-4 h-4 rounded flex-shrink-0 border flex items-center justify-center transition-colors ${isSelected ? "bg-primary-600 border-primary-600" : "border-gray-300"}`}
                       >
                         {isSelected && (
                           <svg
@@ -523,11 +555,7 @@ function LocalityPicker({
                 Other / not listed
               </span>
               <span
-                className={`w-4 h-4 rounded flex-shrink-0 border flex items-center justify-center transition-colors ${
-                  showOther
-                    ? "bg-primary-600 border-primary-600"
-                    : "border-gray-300"
-                }`}
+                className={`w-4 h-4 rounded flex-shrink-0 border flex items-center justify-center transition-colors ${showOther ? "bg-primary-600 border-primary-600" : "border-gray-300"}`}
               >
                 {showOther && (
                   <svg
@@ -604,30 +632,209 @@ function LocalityPicker({
   );
 }
 
-// ─── Main Form ────────────────────────────────────────────────────────────────
+// ─── Error Banner ─────────────────────────────────────────────────────────────
 
-function getErrorType(error: unknown): ErrorType {
-  if (!navigator.onLine) return "network";
-  if (error instanceof Error) {
-    const msg = error.message.toLowerCase();
-    if (msg.includes("429") || msg.includes("rate")) return "rate_limit";
-    if (msg.includes("5") || msg.includes("server")) return "server";
-  }
-  // Check for fetch/axios response status if applicable
-  if (typeof error === "object" && error !== null) {
-    const status = (error as { response?: { status?: number } }).response
-      ?.status;
-    if (status === 429) return "rate_limit";
-    if (status && status >= 500) return "server";
-  }
-  return "unknown";
+function ErrorBanner({
+  type,
+  onDismiss,
+}: {
+  type: ErrorType;
+  onDismiss: () => void;
+}) {
+  const content: Record<ErrorType, { title: string; message: string }> = {
+    network: {
+      title: "No internet connection",
+      message: "Please check your connection and try again.",
+    },
+    rate_limit: {
+      title: "Too many requests",
+      message: "Please wait a few minutes before submitting again.",
+    },
+    server: {
+      title: "Something went wrong on our end",
+      message: "Our team has been notified. Please try again in a moment.",
+    },
+    unknown: {
+      title: "Submission failed",
+      message:
+        "We couldn't send your request. Please try again or call us directly.",
+    },
+  };
+  const { title, message } = content[type];
+  return (
+    <div className="flex items-start gap-3 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+      <span className="text-base flex-shrink-0 mt-0.5">⚠️</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-red-800">{title}</p>
+        <p className="text-xs text-red-600 mt-0.5 leading-relaxed">{message}</p>
+      </div>
+      <button
+        onClick={onDismiss}
+        className="flex-shrink-0 text-red-400 hover:text-red-600 transition-colors"
+        aria-label="Dismiss"
+      >
+        <svg
+          className="w-4 h-4"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+        </svg>
+      </button>
+    </div>
+  );
 }
+
+// ─── Success Screen ───────────────────────────────────────────────────────────
+
+function SuccessScreen({
+  name,
+  propertyType,
+  bhkConfig,
+  possession,
+  budgetMin,
+  budgetMax,
+  localities,
+  onClose,
+  onSubmitAnother,
+}: {
+  name: string;
+  propertyType: string;
+  bhkConfig: string[];
+  possession: string;
+  budgetMin: string;
+  budgetMax: string;
+  localities: string[];
+  onClose: () => void;
+  onSubmitAnother: () => void;
+}) {
+  const ptObj = PROPERTY_TYPES.find((p) => p.value === propertyType);
+  const minIdx = BUDGET_BRACKETS.findIndex((b) => b.value === budgetMin);
+  const maxIdx = BUDGET_BRACKETS.findIndex((b) => b.value === budgetMax);
+
+  const budgetLabel =
+    budgetMin === "flexible"
+      ? "Flexible budget"
+      : budgetMin && budgetMax
+        ? `${BUDGET_BRACKETS[minIdx]?.label} – ${BUDGET_BRACKETS[maxIdx]?.label}`
+        : budgetMin
+          ? `From ${BUDGET_BRACKETS[minIdx]?.label}`
+          : null;
+
+  const possessionLabel = POSSESSION_OPTIONS.find(
+    (p) => p.value === possession,
+  );
+
+  // Build summary lines — only non-empty ones
+  const summaryLines: { emoji: string; text: string }[] = [];
+  if (ptObj) {
+    const typeStr =
+      bhkConfig.length > 0
+        ? `${bhkConfig.join(", ")} ${ptObj.label}`
+        : ptObj.label;
+    summaryLines.push({ emoji: ptObj.emoji, text: typeStr });
+  }
+  if (possessionLabel)
+    summaryLines.push({
+      emoji: possessionLabel.emoji,
+      text: possessionLabel.label,
+    });
+  if (budgetLabel) summaryLines.push({ emoji: "💰", text: budgetLabel });
+  if (localities.length > 0) {
+    summaryLines.push({
+      emoji: "📍",
+      text:
+        localities.slice(0, 2).join(", ") +
+        (localities.length > 2 ? ` +${localities.length - 2} more` : ""),
+    });
+  }
+
+  return (
+    <div className="flex flex-col items-center text-center py-2 px-2">
+      {/* Animated checkmark */}
+      <div className="relative mb-4">
+        <div className="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center">
+          <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
+            <svg
+              className="w-7 h-7 text-green-600"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+        </div>
+        <div className="absolute inset-0 rounded-full border-2 border-green-200 animate-ping opacity-30" />
+      </div>
+
+      <h3 className="text-xl font-semibold text-gray-900 mb-1">
+        We're on it, {name.split(" ")[0]}!
+      </h3>
+      <p className="text-sm text-gray-500 leading-relaxed mb-4">
+        Your request is live. We'll call you within{" "}
+        <span className="text-gray-700 font-medium">24 hours</span> with matched
+        properties.
+      </p>
+
+      {/* Search summary receipt card — only shown if any preferences were set */}
+      {summaryLines.length > 0 && (
+        <div className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 mb-4 text-left">
+          <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-2.5">
+            Your search summary
+          </p>
+          <div className="space-y-1.5">
+            {summaryLines.map((line, i) => (
+              <div key={i} className="flex items-center gap-2.5">
+                <span className="text-base w-5 text-center flex-shrink-0">
+                  {line.emoji}
+                </span>
+                <span className="text-xs text-gray-700 font-medium">
+                  {line.text}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* WhatsApp hint */}
+      <div className="flex items-center gap-2 bg-green-50 text-green-700 text-xs font-medium px-4 py-2.5 rounded-full mb-5">
+        <span className="text-sm">💬</span>
+        Check your WhatsApp for a confirmation
+      </div>
+
+      <div className="flex flex-col gap-2 w-full">
+        <button
+          onClick={onSubmitAnother}
+          className="w-full bg-primary-600 text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-primary-700 transition-colors"
+        >
+          Submit another request
+        </button>
+        <button
+          onClick={onClose}
+          className="w-full border border-gray-200 text-gray-500 rounded-lg py-2.5 text-sm font-medium hover:bg-gray-50 transition-colors"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Form ────────────────────────────────────────────────────────────────
 
 export default function FindPropertyForm({ onClose }: { onClose: () => void }) {
   const [form, setForm] = useState(resetFormState());
-  const [selectedLocalities, setSelectedLocalities] = useState<Set<string>>(
-    new Set(),
-  );
+  const [propertyType, setPropertyType] = useState("");
+  const [bhkConfig, setBhkConfig] = useState<string[]>([]);
+  const [possession, setPossession] = useState("");
+  const [selectedLocalities, setSelected] = useState<Set<string>>(new Set());
   const [showOther, setShowOther] = useState(false);
   const [otherLocality, setOtherLocality] = useState("");
   const [budgetMin, setBudgetMin] = useState("");
@@ -637,12 +844,18 @@ export default function FindPropertyForm({ onClose }: { onClose: () => void }) {
   >("idle");
   const [errorType, setErrorType] = useState<ErrorType>("unknown");
 
+  // When property type changes to plot/commercial, clear BHK
+  function handlePropertyTypeChange(v: string) {
+    setPropertyType(v);
+    if (!BHK_TYPES.includes(v)) setBhkConfig([]);
+  }
+
   function set(field: string, value: string) {
     setForm((f) => ({ ...f, [field]: value }));
   }
 
   const handleToggle = useCallback((loc: string) => {
-    setSelectedLocalities((prev) => {
+    setSelected((prev) => {
       const next = new Set(prev);
       next.has(loc) ? next.delete(loc) : next.add(loc);
       return next;
@@ -656,7 +869,10 @@ export default function FindPropertyForm({ onClose }: { onClose: () => void }) {
 
   function handleSubmitAnother() {
     setForm(resetFormState());
-    setSelectedLocalities(new Set());
+    setPropertyType("");
+    setBhkConfig([]);
+    setPossession("");
+    setSelected(new Set());
     setShowOther(false);
     setOtherLocality("");
     setBudgetMin("");
@@ -672,10 +888,13 @@ export default function FindPropertyForm({ onClose }: { onClose: () => void }) {
     try {
       await api.post("/api/leads/find-property", {
         ...form,
+        propertyType: propertyType || undefined,
+        bhkConfig: bhkConfig.length > 0 ? bhkConfig : undefined,
+        possession: possession || undefined,
         localities: Array.from(selectedLocalities),
         otherLocality: showOther ? otherLocality : "",
-        budgetMin,
-        budgetMax,
+        budgetMin: budgetMin || undefined,
+        budgetMax: budgetMax || undefined,
       });
       setStatus("success");
     } catch (err) {
@@ -684,20 +903,27 @@ export default function FindPropertyForm({ onClose }: { onClose: () => void }) {
     }
   }
 
-  // ── Success screen ──────────────────────────────────────────────────────────
+  const showBhk = BHK_TYPES.includes(propertyType);
+
   if (status === "success") {
     return (
       <SuccessScreen
         name={form.name}
+        propertyType={propertyType}
+        bhkConfig={bhkConfig}
+        possession={possession}
+        budgetMin={budgetMin}
+        budgetMax={budgetMax}
+        localities={Array.from(selectedLocalities)}
         onClose={onClose}
         onSubmitAnother={handleSubmitAnother}
       />
     );
   }
 
-  // ── Form ────────────────────────────────────────────────────────────────────
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Name + Phone */}
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">
@@ -727,6 +953,7 @@ export default function FindPropertyForm({ onClose }: { onClose: () => void }) {
         </div>
       </div>
 
+      {/* City */}
       <div>
         <label className="block text-xs font-medium text-gray-600 mb-1">
           Preferred City *
@@ -737,7 +964,7 @@ export default function FindPropertyForm({ onClose }: { onClose: () => void }) {
           onChange={(e) => set("city", e.target.value)}
           className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
         >
-          <option value="">Select city</option>
+          <option value="">Select your city</option>
           {CITIES.map((c) => (
             <option key={c} value={c}>
               {c}
@@ -746,6 +973,21 @@ export default function FindPropertyForm({ onClose }: { onClose: () => void }) {
         </select>
       </div>
 
+      {/* Property type */}
+      <PropertyTypePicker
+        value={propertyType}
+        onChange={handlePropertyTypeChange}
+      />
+
+      {/* BHK — only when flat / house / villa */}
+      {showBhk && <BhkPicker selected={bhkConfig} onChange={setBhkConfig} />}
+
+      {/* Possession — only when property type is set and NOT plot */}
+      {propertyType && propertyType !== "plot" && (
+        <PossessionPicker value={possession} onChange={setPossession} />
+      )}
+
+      {/* Locality */}
       <LocalityPicker
         selected={selectedLocalities}
         otherLocality={otherLocality}
@@ -755,6 +997,7 @@ export default function FindPropertyForm({ onClose }: { onClose: () => void }) {
         onOtherTextChange={setOtherLocality}
       />
 
+      {/* Budget */}
       <BudgetPicker
         budgetMin={budgetMin}
         budgetMax={budgetMax}
@@ -764,25 +1007,27 @@ export default function FindPropertyForm({ onClose }: { onClose: () => void }) {
         }}
       />
 
+      {/* Requirement */}
       <div>
         <label className="block text-xs font-medium text-gray-600 mb-1">
-          What are you looking for? *
+          Anything else to know? *
         </label>
         <textarea
           required
           value={form.requirement}
           onChange={(e) => set("requirement", e.target.value)}
           rows={3}
-          placeholder="E.g. 2BHK flat in Sector 15, budget ₹50 lakh, ground floor preferred…"
+          placeholder="E.g. ground floor preferred, near a school, vastu-compliant, loan required…"
           className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
         />
       </div>
 
-      {/* Error banner — shown inline, dismissable */}
+      {/* Error */}
       {status === "error" && (
         <ErrorBanner type={errorType} onDismiss={() => setStatus("idle")} />
       )}
 
+      {/* Submit */}
       <button
         type="submit"
         disabled={status === "loading"}
