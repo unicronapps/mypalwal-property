@@ -25,8 +25,11 @@ app.use("/api/payments", require("./src/routes/payments"));
 app.use("/api/admin", require("./src/routes/admin"));
 app.use("/api/search", require("./src/routes/search"));
 app.use("/api/locations", require("./src/routes/locations"));
-app.use("/api/leads/find-property", require("./src/routes/leads-find-property"))
-app.use("/api/leads/paperwork", require("./src/routes/leads-paperwork"))
+app.use(
+  "/api/leads/find-property",
+  require("./src/routes/leads-find-property"),
+);
+app.use("/api/leads/paperwork", require("./src/routes/leads-paperwork"));
 
 app.get("/api/health", (req, res) => {
   res.json({

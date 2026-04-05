@@ -317,7 +317,7 @@ router.post("/", verifyToken, async (req, res) => {
      ORDER BY s.expires_at DESC LIMIT 1`,
     [req.user.id],
   );
-  const listingLimit = subRows.length ? subRows[0].listing_limit : 5; // Free = 5
+  const listingLimit = subRows.length ? subRows[0].listing_limit : 10; // Free = 5
   if (listingLimit !== -1) {
     const { rows: countRow } = await query(
       `SELECT COUNT(*) FROM properties WHERE owner_id = $1 AND status != 'inactive'`,

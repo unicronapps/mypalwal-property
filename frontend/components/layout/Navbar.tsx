@@ -26,7 +26,7 @@ export default function Navbar() {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    fetchUnreadCount();
+    // fetchUnreadCount();
     const interval = setInterval(fetchUnreadCount, 30000);
     return () => clearInterval(interval);
   }, [isAuthenticated, fetchUnreadCount]);

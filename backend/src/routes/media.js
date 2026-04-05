@@ -46,11 +46,13 @@ router.post('/presign', verifyToken, async (req, res) => {
   const ext = path.extname(filename).toLowerCase() || '.jpg';
   const safeName = path.basename(filename, ext).replace(/[^a-zA-Z0-9-_]/g, '-').slice(0, 50);
   const s3Key = `properties/${propertyId}/${uuidv4()}-${safeName}${ext}`;
-  const baseUrl = process.env.S3_ENDPOINT
-    ? `${process.env.S3_ENDPOINT}/${bucket}`
-    : `https://${bucket}.s3.${process.env.S3_REGION || 'ap-south-1'}.amazonaws.com`;
-  const fileUrl = `${baseUrl}/${s3Key}`;
+  // NEW CODE
+  // It is best practice to put the public URL in your .env file
+  const publicBaseUrl = process.env.R2_PUBLIC_URL || 'https://pub-75e7337751c14e2f927864034f263b93.r2.dev';
 
+  // R2 public URLs map directly to the root of your bucket, so you do not append the bucket name here.
+  // You just append the s3Key.
+  const fileUrl = `${publicBaseUrl}/${s3Key}`;
   try {
     const command = new PutObjectCommand({ Bucket: bucket, Key: s3Key, ContentType: contentType });
     const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn: 300 });

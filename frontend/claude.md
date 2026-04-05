@@ -1,4 +1,4 @@
-Just read the files from app/page.tsx and app/search
+Just read the files from component/property and context/
 ignore other files and even don't index them
 make sure to make only required changes.
  don't read whole project just read files I menntioned.
