@@ -2,7 +2,12 @@
 const nextConfig = {
   images: {
     unoptimized: true,
-    domains: ["(https:/pub-75e7337751c14e2f927864034f263b93.r2.dev/*"], // Google profile pics
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'pub-75e7337751c14e2f927864034f263b93.r2.dev',
+      },
+    ],
   },
 };
 
