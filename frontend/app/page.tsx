@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import HeroSearch from "@/components/home/HeroSearch";
 import LeadModal from "@/components/home/LeadModal";
@@ -11,312 +11,165 @@ import FindPropertySection from "@/components/home/FindPropertySection";
 import PaperworkSection from "@/components/home/PaperworkSection";
 import LocalitiesSection from "@/components/home/LocalitiesSection";
 
-/* ─── Types ─────────────────────────────────────────────────────────────── */
+/* ─── Types ─────────────────────────────────────────────────────────── */
 type ModalType = "paperwork" | "find-property" | null;
 
-/* ─── Hero floating showcase cards ─────────────────────────────────────── */
-const HERO_CARDS = [
+/* ─── Hero BG images ────────────────────────────────────────────────── */
+const HERO_BG_IMAGES = [
+  "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1400&q=80&auto=format",
+  "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1400&q=80&auto=format",
+  "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1400&q=80&auto=format",
+];
+
+/* ─── Sample projects (Palwal area ads — dummy click tracking) ──────── */
+const SAMPLE_PROJECTS = [
   {
-    price: "₹45 Lakh",
-    type: "2 BHK Flat",
-    location: "HUDA Sector 2, Palwal",
-    img: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400&q=80&auto=format",
+    id: "proj-1",
+    name: "Omaxe City Phase 3",
+    builder: "Omaxe Ltd.",
+    type: "2/3 BHK Flats",
+    price: "₹38 – 72 Lakh",
+    location: "NH-2, Palwal",
+    img: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=600&q=80&auto=format",
+    tag: "New Launch",
   },
   {
-    price: "₹1.2 Cr",
-    type: "3 BHK Villa",
-    location: "Omaxe City, Palwal",
-    img: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=400&q=80&auto=format",
+    id: "proj-2",
+    name: "SRS Royal Hills",
+    builder: "SRS Group",
+    type: "Residential Plots",
+    price: "₹15 – 35 Lakh",
+    location: "Sector 87, Palwal",
+    img: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=600&q=80&auto=format",
+    tag: "Popular",
   },
   {
-    price: "₹22 Lakh",
-    type: "Residential Plot",
-    location: "New Colony, Palwal",
-    img: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&q=80&auto=format",
+    id: "proj-3",
+    name: "Green Valley Farmhouses",
+    builder: "Local Developer",
+    type: "Farmhouse Plots",
+    price: "₹55 Lakh onwards",
+    location: "Hodal Road, Palwal",
+    img: "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=600&q=80&auto=format",
+    tag: "Premium",
+  },
+  {
+    id: "proj-4",
+    name: "RPS Urbania",
+    builder: "RPS Group",
+    type: "3/4 BHK Floors",
+    price: "₹62 Lakh – 1.1 Cr",
+    location: "Sector 45, Palwal",
+    img: "https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=600&q=80&auto=format",
+    tag: "Ready to Move",
   },
 ];
 
-/* ─── Property types with richer icons ─────────────────────────────────── */
+/* ─── Gallery images (scrollable showcase) ──────────────────────────── */
+const GALLERY_IMAGES = [
+  {
+    src: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=500&q=80&auto=format",
+    caption: "Modern Villas",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=500&q=80&auto=format",
+    caption: "Luxury Interiors",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=500&q=80&auto=format",
+    caption: "Premium Floors",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=500&q=80&auto=format",
+    caption: "Farmhouse Living",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=500&q=80&auto=format",
+    caption: "High-rise Apartments",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=500&q=80&auto=format",
+    caption: "Independent Houses",
+  },
+];
+
+/* ─── Property types ────────────────────────────────────────────────── */
 const PROPERTY_TYPES = [
-  {
-    type: "flat",
-    label: "Flat",
-    bg: "bg-blue-50",
-    text: "text-blue-600",
-    hoverBorder: "hover:border-blue-200",
-    icon: (
-      <svg
-        className="w-5 h-5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" />
-        <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" />
-        <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2" />
-        <path d="M10 6h4M10 10h4M10 14h4M10 18h4" />
-      </svg>
-    ),
-  },
-  {
-    type: "plot",
-    label: "Plot",
-    bg: "bg-emerald-50",
-    text: "text-emerald-600",
-    hoverBorder: "hover:border-emerald-200",
-    icon: (
-      <svg
-        className="w-5 h-5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" />
-        <line x1="9" y1="3" x2="9" y2="18" />
-        <line x1="15" y1="6" x2="15" y2="21" />
-      </svg>
-    ),
-  },
-  {
-    type: "house",
-    label: "House",
-    bg: "bg-orange-50",
-    text: "text-orange-600",
-    hoverBorder: "hover:border-orange-200",
-    icon: (
-      <svg
-        className="w-5 h-5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-        <polyline points="9 22 9 12 15 12 15 22" />
-      </svg>
-    ),
-  },
-  {
-    type: "commercial",
-    label: "Commercial",
-    bg: "bg-violet-50",
-    text: "text-violet-600",
-    hoverBorder: "hover:border-violet-200",
-    icon: (
-      <svg
-        className="w-5 h-5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-        <line x1="3" y1="6" x2="21" y2="6" />
-        <path d="M16 10a4 4 0 0 1-8 0" />
-      </svg>
-    ),
-  },
-  {
-    type: "agricultural",
-    label: "Land",
-    bg: "bg-lime-50",
-    text: "text-lime-700",
-    hoverBorder: "hover:border-lime-200",
-    icon: (
-      <svg
-        className="w-5 h-5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z" />
-        <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" />
-      </svg>
-    ),
-  },
-  {
-    type: "farmhouse",
-    label: "Farmhouse",
-    bg: "bg-rose-50",
-    text: "text-rose-600",
-    hoverBorder: "hover:border-rose-200",
-    icon: (
-      <svg
-        className="w-5 h-5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M22 8.35V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.35A2 2 0 0 1 3.26 6.5l8-3.2a2 2 0 0 1 1.48 0l8 3.2A2 2 0 0 1 22 8.35Z" />
-        <path d="M6 18h12" />
-        <rect width="8" height="8" x="8" y="14" rx="1" />
-      </svg>
-    ),
-  },
-  {
-    type: "villa",
-    label: "Villa",
-    bg: "bg-sky-50",
-    text: "text-sky-600",
-    hoverBorder: "hover:border-sky-200",
-    icon: (
-      <svg
-        className="w-5 h-5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M2 20V9.5L12 2l10 7.5V20" />
-        <path d="M10 20v-5h4v5" />
-        <rect x="6" y="11" width="3" height="4" rx="0.5" />
-        <rect x="15" y="11" width="3" height="4" rx="0.5" />
-      </svg>
-    ),
-  },
-  {
-    type: "pg",
-    label: "PG / Hostel",
-    bg: "bg-amber-50",
-    text: "text-amber-600",
-    hoverBorder: "hover:border-amber-200",
-    icon: (
-      <svg
-        className="w-5 h-5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8" />
-        <path d="M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4" />
-        <path d="M12 4v6" />
-        <path d="M2 18h20" />
-      </svg>
-    ),
-  },
+  { type: "flat", label: "Flat", emoji: "🏢" },
+  { type: "plot", label: "Plot", emoji: "📐" },
+  { type: "house", label: "House", emoji: "🏠" },
+  { type: "commercial", label: "Commercial", emoji: "🏪" },
+  { type: "agricultural", label: "Land", emoji: "🌿" },
+  { type: "farmhouse", label: "Farmhouse", emoji: "🏡" },
+  { type: "villa", label: "Villa", emoji: "🏛️" },
+  { type: "pg", label: "PG / Hostel", emoji: "🛏️" },
 ];
 
-/* ─── Localities ─────────────────────────────────────────────────────── */
-const LOCALITIES = [
-  "HUDA Sector 2",
-  "New Colony",
-  "New Colony Extension",
-  "Adarsh Colony",
-  "Krishna Colony",
-  "Kalra Colony",
-  "Shiv Colony",
-  "Shiva Puri",
-  "Kailash Nagar",
-  "Camp Colony",
-  "Housing Board Colony",
-  "Jawahar Nagar",
-  "Prakash Vihar Colony",
-  "Panchwati Colony",
-  "Ramnagar",
-  "Deepak Colony",
-  "Shyam Nagar Colony",
-  "Alapur",
-  "Omaxe City",
-  "SRS Prime Floor",
-  "RPS Urbania",
-  "Baghola",
-  "Patli Khurd",
-  "Main Market",
-  "Gol Market",
-  "Railway Road",
-  "Bus Stand Area",
-  "Subzi Mandi Area",
-  "Mathura Road Area",
-  "Minar Gate",
-];
-
-/* ─── Trust stat data ───────────────────────────────────────────────── */
+/* ─── Trust stats ───────────────────────────────────────────────────── */
 const TRUST_STATS = [
-  {
-    label: "Active Listings",
-    value: "2,400+",
-    icon: (
-      <svg
-        className="w-3.5 h-3.5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-        <polyline points="9 22 9 12 15 12 15 22" />
-      </svg>
-    ),
-  },
-  {
-    label: "Verified Sellers",
-    value: "100%",
-    icon: (
-      <svg
-        className="w-3.5 h-3.5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-      </svg>
-    ),
-  },
-  {
-    label: "Paperwork Support",
-    value: "Full",
-    icon: (
-      <svg
-        className="w-3.5 h-3.5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-        <polyline points="14 2 14 8 20 8" />
-        <line x1="9" y1="13" x2="15" y2="13" />
-        <line x1="9" y1="17" x2="13" y2="17" />
-      </svg>
-    ),
-  },
+  { label: "Active Listings", value: "2,400+", icon: "🏘️" },
+  { label: "Verified Sellers", value: "100%", icon: "✅" },
+  { label: "Paperwork Support", value: "Full", icon: "📋" },
 ];
 
-/* ─── Page ──────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════
+   SCROLL CAROUSEL HOOK
+   ═══════════════════════════════════════════════════════════════════════ */
+function useScrollCarousel() {
+  const ref = useRef<HTMLDivElement>(null);
+  const scroll = useCallback((dir: "left" | "right") => {
+    if (!ref.current) return;
+    const amount = ref.current.offsetWidth * 0.7;
+    ref.current.scrollBy({
+      left: dir === "left" ? -amount : amount,
+      behavior: "smooth",
+    });
+  }, []);
+  return { ref, scroll };
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   INTERSECTION OBSERVER HOOK (for scroll animations)
+   ═══════════════════════════════════════════════════════════════════════ */
+function useReveal() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) {
+          setVisible(true);
+          obs.disconnect();
+        }
+      },
+      { threshold: 0.15 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  return { ref, visible };
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PAGE
+   ═══════════════════════════════════════════════════════════════════════ */
 export default function HomePage() {
   const [modal, setModal] = useState<ModalType>(null);
   const [featured, setFeatured] = useState<any[]>([]);
   const [recent, setRecent] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [heroBg, setHeroBg] = useState(0);
+  const [adClicks, setAdClicks] = useState<Record<string, number>>({});
 
+  const galleryCarousel = useScrollCarousel();
+  const projectsCarousel = useScrollCarousel();
+  const typesReveal = useReveal();
+  const projectsReveal = useReveal();
+  const galleryReveal = useReveal();
+
+  /* API calls — unchanged */
   useEffect(() => {
     Promise.all([
       api
@@ -333,206 +186,314 @@ export default function HomePage() {
       .finally(() => setLoading(false));
   }, []);
 
+  /* Hero BG slideshow */
+  useEffect(() => {
+    const t = setInterval(
+      () => setHeroBg((p) => (p + 1) % HERO_BG_IMAGES.length),
+      5000,
+    );
+    return () => clearInterval(t);
+  }, []);
+
+  /* Ad click tracker (dummy) */
+  const trackAdClick = (projectId: string) => {
+    setAdClicks((prev) => ({
+      ...prev,
+      [projectId]: (prev[projectId] || 0) + 1,
+    }));
+    console.log(
+      `[AD CLICK] Project: ${projectId}, Total: ${(adClicks[projectId] || 0) + 1}`,
+    );
+  };
+
   return (
     <>
-      {/* ── Global keyframe animations (injected once) ─────────────────── */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@300;400;500;600;700;800&display=swap');
 
-        @keyframes hp-float {
-          0%, 100% { transform: translateY(0px); }
-          50%       { transform: translateY(-12px); }
-        }
-        @keyframes hp-floatB {
-          0%, 100% { transform: translateY(0px); }
-          50%       { transform: translateY(-7px); }
-        }
-        @keyframes hp-floatC {
-          0%, 100% { transform: translateY(0px); }
-          50%       { transform: translateY(-10px); }
-        }
-        @keyframes hp-fadeUp {
-          from { opacity: 0; transform: translateY(22px); }
-          to   { opacity: 1; transform: translateY(0);    }
-        }
-        @keyframes hp-shimmer {
-          0%   { background-position: 200% 50%; }
-          100% { background-position: -200% 50%; }
-        }
-        @keyframes hp-pulse-dot {
-          0%, 100% { transform: scale(1);   opacity: 1;   }
-          50%       { transform: scale(1.6); opacity: 0.5; }
+        :root {
+          --clr-primary: #1746A2;
+          --clr-primary-light: #3B6DD8;
+          --clr-primary-dark: #0F2E6B;
+          --clr-accent: #FF6B35;
+          --clr-accent-warm: #F59E0B;
+          --clr-surface: #F7F8FC;
+          --clr-surface-warm: #FFF8F0;
+          --clr-text: #1A1A2E;
+          --clr-text-muted: #6B7280;
+          --font-display: 'DM Serif Display', Georgia, serif;
+          --font-body: 'Outfit', system-ui, sans-serif;
+          --radius: 16px;
+          --radius-sm: 10px;
         }
 
-        .hp-font-display { font-family: 'Playfair Display', Georgia, serif; }
+        * { font-family: var(--font-body); }
 
-        .hp-card-1 { animation: hp-float  6s ease-in-out infinite; }
-        .hp-card-2 { animation: hp-floatB 7s 1s   ease-in-out infinite; }
-        .hp-card-3 { animation: hp-floatC 8s 2s   ease-in-out infinite; }
+        /* ── Keyframes ─────────────────────────────── */
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(30px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeInScale {
+          from { opacity: 0; transform: scale(0.92); }
+          to   { opacity: 1; transform: scale(1); }
+        }
+        @keyframes slideInLeft {
+          from { opacity: 0; transform: translateX(-40px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes heroShift {
+          0%, 100% { transform: scale(1.05) translate(0, 0); }
+          33%      { transform: scale(1.08) translate(-1%, -1%); }
+          66%      { transform: scale(1.06) translate(1%, 0.5%); }
+        }
+        @keyframes pulseBadge {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(255,107,53,0.4); }
+          50%      { box-shadow: 0 0 0 8px rgba(255,107,53,0); }
+        }
+        @keyframes floatCard {
+          0%, 100% { transform: translateY(0); }
+          50%      { transform: translateY(-8px); }
+        }
+        @keyframes shimmer {
+          0%   { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        @keyframes marquee {
+          0%   { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
 
-        .hp-fade-left  { animation: hp-fadeUp 0.65s ease both; }
-        .hp-fade-right { animation: hp-fadeUp 0.65s 0.18s ease both; opacity: 0; animation-fill-mode: forwards; }
+        .anim-fade-up { animation: fadeInUp 0.7s ease both; }
+        .anim-fade-up-d1 { animation: fadeInUp 0.7s 0.1s ease both; }
+        .anim-fade-up-d2 { animation: fadeInUp 0.7s 0.2s ease both; }
+        .anim-fade-up-d3 { animation: fadeInUp 0.7s 0.3s ease both; }
+        .anim-fade-up-d4 { animation: fadeInUp 0.7s 0.4s ease both; }
+        .anim-fade-scale { animation: fadeInScale 0.5s ease both; }
+        .anim-slide-left { animation: slideInLeft 0.6s ease both; }
 
-        .hp-eyebrow-dot { animation: hp-pulse-dot 2s ease-in-out infinite; }
+        .reveal-item { opacity: 0; transform: translateY(24px); transition: all 0.6s cubic-bezier(0.22,1,0.36,1); }
+        .reveal-item.visible { opacity: 1; transform: translateY(0); }
 
-        /* Shimmer sweep on service cards */
-        .hp-svc-card { position: relative; overflow: hidden; }
-        .hp-svc-card::after {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(
-            105deg,
-            transparent 40%,
-            rgba(255,255,255,0.11) 50%,
-            transparent 60%
-          );
+        /* ── Hero BG ───────────────────────────────── */
+        .hero-bg-img {
+          position: absolute; inset: 0;
+          background-size: cover; background-position: center;
+          animation: heroShift 20s ease-in-out infinite;
+          transition: opacity 1.2s ease;
+        }
+
+        /* ── Scroll snap carousel ──────────────────── */
+        .snap-carousel {
+          display: flex; gap: 16px;
+          overflow-x: auto; scroll-snap-type: x mandatory;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none; -ms-overflow-style: none;
+          padding-bottom: 4px;
+        }
+        .snap-carousel::-webkit-scrollbar { display: none; }
+        .snap-carousel > * { scroll-snap-align: start; flex-shrink: 0; }
+
+        /* ── Hover lifts ───────────────────────────── */
+        .lift { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .lift:hover { transform: translateY(-6px); box-shadow: 0 20px 60px rgba(0,0,0,0.12); }
+
+        /* ── Ad badge pulse ─────────────────────────── */
+        .ad-badge { animation: pulseBadge 2s infinite; }
+
+        /* ── Gradient text ─────────────────────────── */
+        .gradient-text {
+          background: linear-gradient(135deg, var(--clr-primary), var(--clr-accent));
+          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        /* ── Glass card ────────────────────────────── */
+        .glass {
+          background: rgba(255,255,255,0.85);
+          backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+          border: 1px solid rgba(255,255,255,0.5);
+        }
+
+        /* ── CTA shimmer ───────────────────────────── */
+        .cta-shimmer {
+          position: relative; overflow: hidden;
+        }
+        .cta-shimmer::after {
+          content: ''; position: absolute; inset: 0;
+          background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.25) 50%, transparent 60%);
           background-size: 200% 100%;
-          animation: hp-shimmer 3.5s linear infinite;
+          animation: shimmer 3s linear infinite;
         }
+
+        /* ── Marquee ───────────────────────────────── */
+        .marquee-track { animation: marquee 30s linear infinite; }
+        .marquee-track:hover { animation-play-state: paused; }
       `}</style>
 
-      <div className="min-h-screen bg-[#f0f4f8]">
+      <div
+        className="min-h-screen"
+        style={{ background: "var(--clr-surface)" }}
+      >
         {/* ═══════════════════════════════════════════════════════════════
-            HERO
+            HERO — with background images & sell button
         ═══════════════════════════════════════════════════════════════ */}
-        <section className="relative bg-white border-b border-gray-100 overflow-hidden">
-          {/* Subtle grid */}
+        <section
+          className="relative overflow-hidden"
+          style={{ minHeight: "clamp(520px, 85vh, 720px)" }}
+        >
+          {/* BG images with crossfade */}
+          {HERO_BG_IMAGES.map((img, i) => (
+            <div
+              key={i}
+              className="hero-bg-img"
+              style={{
+                backgroundImage: `url(${img})`,
+                opacity: heroBg === i ? 1 : 0,
+              }}
+            />
+          ))}
+          {/* Dark overlay */}
           <div
-            className="absolute inset-0 opacity-[0.035] pointer-events-none"
+            className="absolute inset-0"
             style={{
-              backgroundImage:
-                "linear-gradient(#1d4ed8 1px,transparent 1px),linear-gradient(90deg,#1d4ed8 1px,transparent 1px)",
-              backgroundSize: "44px 44px",
+              background:
+                "linear-gradient(180deg, rgba(15,23,42,0.72) 0%, rgba(15,23,42,0.85) 60%, rgba(15,23,42,0.95) 100%)",
             }}
           />
-          {/* Soft radial glow */}
+          {/* Decorative circles */}
           <div
-            className="absolute right-0 top-0 w-[620px] h-[620px] rounded-full pointer-events-none opacity-25"
+            className="absolute top-[-80px] right-[-80px] w-[300px] h-[300px] rounded-full opacity-10 pointer-events-none"
             style={{
-              background: "radial-gradient(circle,#dbeafe 0%,transparent 70%)",
+              background:
+                "radial-gradient(circle, var(--clr-accent), transparent 70%)",
+            }}
+          />
+          <div
+            className="absolute bottom-[-60px] left-[-60px] w-[200px] h-[200px] rounded-full opacity-10 pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(circle, var(--clr-primary-light), transparent 70%)",
             }}
           />
 
-          <div className="relative max-w-[1120px] mx-auto px-6 py-16 grid grid-cols-1 lg:grid-cols-[1fr_460px] gap-10 items-center">
-            {/* ── Left copy ── */}
-            <div className="hp-fade-left">
-              {/* Eyebrow badge */}
-              <div className="inline-flex items-center gap-2.5 bg-blue-50 border border-blue-100 rounded-full px-4 py-1.5 mb-6">
-                <span className="hp-eyebrow-dot w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
-                <span className="text-[11px] font-semibold text-blue-700 tracking-widest uppercase">
-                  Palwal's Local Property Platform
+          <div
+            className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 flex flex-col justify-center"
+            style={{ minHeight: "clamp(520px, 85vh, 720px)" }}
+          >
+            {/* Badge */}
+            <div
+              className="anim-fade-up inline-flex items-center gap-2 self-start rounded-full px-4 py-1.5 mb-5"
+              style={{
+                background: "rgba(255,255,255,0.1)",
+                border: "1px solid rgba(255,255,255,0.15)",
+              }}
+            >
+              <span
+                className="w-2 h-2 rounded-full bg-green-400"
+                style={{ animation: "pulseBadge 2s infinite" }}
+              />
+              <span className="text-xs font-semibold text-white/90 tracking-wider uppercase">
+                Palwal's #1 Property Platform
+              </span>
+            </div>
+
+            {/* Headline */}
+            <h1
+              className="anim-fade-up-d1 text-white leading-[1.08] mb-4"
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: "clamp(2.2rem, 6vw, 3.8rem)",
+              }}
+            >
+              Find, Buy, Rent or <br className="hidden sm:block" />
+              <span className="gradient-text">Sell Property</span> in Palwal
+            </h1>
+
+            <p
+              className="anim-fade-up-d2 text-white/60 text-base sm:text-lg max-w-lg mb-8"
+              style={{ lineHeight: 1.7 }}
+            >
+              Verified listings. Direct owner contact. Zero brokerage. Your
+              complete property platform for Palwal & beyond.
+            </p>
+
+            {/* ── Search card with glass effect ── */}
+            <div
+              className="anim-fade-up-d3 glass rounded-2xl p-4 sm:p-5 max-w-2xl w-full"
+              style={{ boxShadow: "0 24px 80px rgba(0,0,0,0.25)" }}
+            >
+              <HeroSearch />
+
+              {/* Sell CTA — sits below the search form */}
+              <div
+                className="mt-4 pt-3 flex items-center gap-3"
+                style={{ borderTop: "1px solid rgba(0,0,0,0.06)" }}
+              >
+                <span
+                  className="text-xs font-medium"
+                  style={{ color: "var(--clr-text-muted)" }}
+                >
+                  Want to list your property?
                 </span>
-              </div>
-
-              {/* Headline */}
-              <h1 className="hp-font-display text-[2.85rem] md:text-[3.2rem] font-bold leading-[1.1] tracking-tight text-gray-900 mb-5">
-                Find Your{" "}
-                <span className="text-primary-600">Dream&nbsp;Home</span>
-                <br />
-                in Palwal
-              </h1>
-
-              <p className="text-gray-500 text-[1.05rem] leading-relaxed mb-8 max-w-[420px]">
-                Verified listings across Palwal, Gurugram &amp; beyond. Direct
-                owner &amp; dealer contact — zero brokerage hassle.
-              </p>
-
-              {/* Search card */}
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-[0_4px_28px_rgba(0,0,0,0.07)] p-3.5 md:p-4">
-                <HeroSearch />
-              </div>
-
-              {/* Trust strip */}
-              <div className="mt-7 flex items-center gap-6 flex-wrap">
-                {TRUST_STATS.map((s) => (
-                  <div key={s.label} className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-primary-600 flex-shrink-0">
-                      {s.icon}
-                    </div>
-                    <div>
-                      <div className="text-[13px] font-bold text-gray-900 leading-none">
-                        {s.value}
-                      </div>
-                      <div className="text-[11px] text-gray-400 mt-0.5">
-                        {s.label}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                <Link
+                  href="/post"
+                  className="cta-shimmer inline-flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-bold transition-all duration-200 hover:scale-105"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, var(--clr-accent), #e85d2a)",
+                    color: "white",
+                    boxShadow: "0 4px 16px rgba(255,107,53,0.3)",
+                  }}
+                >
+                  <svg
+                    className="w-4 h-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2.5}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                  Sell / Post Property
+                </Link>
               </div>
             </div>
 
-            {/* ── Right — floating property cards ── */}
-            <div className="hidden lg:block hp-fade-right relative h-[400px]">
-              {/* Decorative background blob */}
-              <div
-                className="absolute top-6 left-12 w-64 h-64 rounded-full opacity-40 pointer-events-none"
-                style={{
-                  background:
-                    "radial-gradient(circle,#bfdbfe 0%,transparent 70%)",
-                }}
-              />
-
-              {HERO_CARDS.map((card, i) => (
-                <div
-                  key={i}
-                  className={`absolute bg-white rounded-2xl overflow-hidden shadow-[0_16px_48px_rgba(15,23,42,0.14)] hp-card-${i + 1}`}
-                  style={{
-                    width: i === 1 ? 224 : 196,
-                    top: i === 0 ? 0 : i === 1 ? 96 : 232,
-                    left: i === 0 ? 24 : i === 1 ? 185 : 8,
-                    zIndex: i === 1 ? 3 : 2,
-                  }}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={card.img}
-                    alt={card.type}
-                    className="w-full object-cover"
-                    style={{ height: i === 1 ? 120 : 108 }}
-                  />
-                  <div className="p-3 pb-3.5">
-                    <div className="text-[13px] font-bold text-gray-900">
-                      {card.price}
+            {/* Trust stats */}
+            <div className="anim-fade-up-d4 flex flex-wrap items-center gap-5 sm:gap-8 mt-7">
+              {TRUST_STATS.map((s) => (
+                <div key={s.label} className="flex items-center gap-2.5">
+                  <span className="text-xl">{s.icon}</span>
+                  <div>
+                    <div className="text-sm font-bold text-white leading-none">
+                      {s.value}
                     </div>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      {/* Pin icon */}
-                      <svg
-                        className="w-2.5 h-2.5 flex-shrink-0 text-gray-400"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={2.5}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                        <circle cx="12" cy="10" r="3" />
-                      </svg>
-                      <span className="text-[10.5px] text-gray-500 truncate">
-                        {card.location}
-                      </span>
-                    </div>
-                    <div className="mt-2 inline-flex items-center gap-1 bg-green-50 border border-green-200 rounded-md px-1.5 py-0.5">
-                      {/* Check icon */}
-                      <svg
-                        className="w-2.5 h-2.5 text-green-600"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={3}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                      <span className="text-[10px] font-semibold text-green-700">
-                        Verified
-                      </span>
+                    <div className="text-[11px] text-white/40 mt-0.5">
+                      {s.label}
                     </div>
                   </div>
                 </div>
+              ))}
+            </div>
+
+            {/* BG slide indicators */}
+            <div className="flex gap-2 mt-8">
+              {HERO_BG_IMAGES.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setHeroBg(i)}
+                  className="h-1 rounded-full transition-all duration-500"
+                  style={{
+                    width: heroBg === i ? 32 : 12,
+                    background:
+                      heroBg === i
+                        ? "var(--clr-accent)"
+                        : "rgba(255,255,255,0.25)",
+                  }}
+                />
               ))}
             </div>
           </div>
@@ -541,18 +502,20 @@ export default function HomePage() {
         {/* ═══════════════════════════════════════════════════════════════
             SERVICE QUICK-ACCESS
         ═══════════════════════════════════════════════════════════════ */}
-        <section className="max-w-[1120px] mx-auto px-6 py-6">
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 -mt-6 relative z-20">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Find a Property */}
             <button
               onClick={() => setModal("find-property")}
-              className="hp-svc-card group flex items-center gap-4 rounded-2xl px-5 py-5 text-left transition-all duration-200 hover:shadow-[0_16px_40px_rgba(29,78,216,0.25)] hover:-translate-y-0.5"
+              className="lift cta-shimmer group flex items-center gap-4 rounded-2xl px-5 py-5 text-left"
               style={{
                 background:
-                  "linear-gradient(135deg,#1e40af 0%,#2563eb 55%,#3b82f6 100%)",
+                  "linear-gradient(135deg, var(--clr-primary-dark), var(--clr-primary), var(--clr-primary-light))",
               }}
             >
-              <div className="relative z-10 flex-shrink-0 w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+              <div
+                className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center"
+                style={{ background: "rgba(255,255,255,0.15)" }}
+              >
                 <svg
                   className="w-6 h-6 text-white"
                   viewBox="0 0 24 24"
@@ -566,16 +529,16 @@ export default function HomePage() {
                   <line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
               </div>
-              <div className="relative z-10 flex-1 min-w-0">
+              <div className="flex-1 min-w-0">
                 <p className="font-bold text-white text-[15px] leading-tight">
                   Find a Property For Me
                 </p>
-                <p className="text-[12.5px] text-blue-100 mt-0.5 leading-relaxed">
-                  Share your need — we shortlist &amp; call within 24h
+                <p className="text-[12.5px] text-blue-100/70 mt-0.5">
+                  Share your need — we shortlist & call within 24h
                 </p>
               </div>
               <svg
-                className="relative z-10 w-5 h-5 text-white/50 flex-shrink-0 group-hover:translate-x-0.5 transition-transform"
+                className="w-5 h-5 text-white/40 flex-shrink-0 group-hover:translate-x-1 transition-transform"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -587,16 +550,18 @@ export default function HomePage() {
               </svg>
             </button>
 
-            {/* Paperwork */}
             <button
               onClick={() => setModal("paperwork")}
-              className="hp-svc-card group flex items-center gap-4 rounded-2xl px-5 py-5 text-left transition-all duration-200 hover:shadow-[0_16px_40px_rgba(180,83,9,0.25)] hover:-translate-y-0.5"
+              className="lift cta-shimmer group flex items-center gap-4 rounded-2xl px-5 py-5 text-left"
               style={{
                 background:
-                  "linear-gradient(135deg,#92400e 0%,#b45309 55%,#d97706 100%)",
+                  "linear-gradient(135deg, #78350f, #b45309, #d97706)",
               }}
             >
-              <div className="relative z-10 flex-shrink-0 w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+              <div
+                className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center"
+                style={{ background: "rgba(255,255,255,0.15)" }}
+              >
                 <svg
                   className="w-6 h-6 text-white"
                   viewBox="0 0 24 24"
@@ -612,16 +577,16 @@ export default function HomePage() {
                   <line x1="16" y1="17" x2="8" y2="17" />
                 </svg>
               </div>
-              <div className="relative z-10 flex-1 min-w-0">
+              <div className="flex-1 min-w-0">
                 <p className="font-bold text-white text-[15px] leading-tight">
                   Property Paper Completion
                 </p>
-                <p className="text-[12.5px] text-amber-100 mt-0.5 leading-relaxed">
+                <p className="text-[12.5px] text-amber-100/70 mt-0.5">
                   Registry, mutation, NOC — handled end-to-end
                 </p>
               </div>
               <svg
-                className="relative z-10 w-5 h-5 text-white/50 flex-shrink-0 group-hover:translate-x-0.5 transition-transform"
+                className="w-5 h-5 text-white/40 flex-shrink-0 group-hover:translate-x-1 transition-transform"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -636,25 +601,25 @@ export default function HomePage() {
         </section>
 
         {/* ═══════════════════════════════════════════════════════════════
-            BROWSE BY TYPE
+            BROWSE BY TYPE — with reveal animation
         ═══════════════════════════════════════════════════════════════ */}
-        <section className="max-w-[1120px] mx-auto px-6 pb-10">
+        <section
+          ref={typesReveal.ref}
+          className="max-w-6xl mx-auto px-4 sm:px-6 pt-14 pb-10"
+        >
           <SectionHeader title="Browse by Type" />
           <div className="grid grid-cols-4 sm:grid-cols-8 gap-2.5">
-            {PROPERTY_TYPES.map((t) => (
+            {PROPERTY_TYPES.map((t, i) => (
               <Link
                 key={t.type}
                 href={`/search?type=${t.type}`}
-                className={`group flex flex-col items-center gap-2.5 p-3 bg-white rounded-2xl border border-gray-100 ${t.hoverBorder} hover:shadow-[0_6px_20px_rgba(0,0,0,0.08)] transition-all duration-200 text-center hover:-translate-y-0.5`}
+                className={`reveal-item ${typesReveal.visible ? "visible" : ""} lift group flex flex-col items-center gap-2 p-3 sm:p-4 bg-white rounded-2xl border border-gray-100 text-center`}
+                style={{ transitionDelay: `${i * 60}ms` }}
               >
-                <div
-                  className={`w-11 h-11 rounded-xl flex items-center justify-center ${t.bg} ${t.text} group-hover:scale-110 transition-transform duration-200`}
-                >
-                  {t.icon}
-                </div>
-                <span
-                  className={`text-[10.5px] font-semibold text-gray-500 group-hover:${t.text} leading-tight transition-colors`}
-                >
+                <span className="text-2xl sm:text-3xl group-hover:scale-110 transition-transform duration-200">
+                  {t.emoji}
+                </span>
+                <span className="text-[10.5px] sm:text-xs font-semibold text-gray-500 group-hover:text-gray-900 transition-colors leading-tight">
                   {t.label}
                 </span>
               </Link>
@@ -666,7 +631,7 @@ export default function HomePage() {
             FEATURED LISTINGS
         ═══════════════════════════════════════════════════════════════ */}
         {!loading && featured.length > 0 && (
-          <section className="max-w-[1120px] mx-auto px-6 pb-10">
+          <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-10">
             <SectionHeader
               title="Featured Listings"
               sub="Promoted by verified sellers"
@@ -683,7 +648,7 @@ export default function HomePage() {
         {/* ═══════════════════════════════════════════════════════════════
             RECENTLY ADDED
         ═══════════════════════════════════════════════════════════════ */}
-        <section className="max-w-[1120px] mx-auto px-6 pb-14">
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-14">
           <SectionHeader
             title="Recently Added"
             sub="Fresh listings, updated every few minutes"
@@ -707,6 +672,249 @@ export default function HomePage() {
         </section>
 
         {/* ═══════════════════════════════════════════════════════════════
+            SAMPLE PROJECTS — ADVERTISEMENT SECTION (with click tracking)
+        ═══════════════════════════════════════════════════════════════ */}
+        <section
+          ref={projectsReveal.ref}
+          className="py-14"
+          style={{
+            background:
+              "linear-gradient(180deg, var(--clr-surface-warm) 0%, var(--clr-surface) 100%)",
+          }}
+        >
+          <div className="max-w-6xl mx-auto px-4 sm:px-6">
+            <div className="flex items-center gap-2 mb-1">
+              <span
+                className="text-[10px] font-bold tracking-widest uppercase px-2.5 py-1 rounded-full"
+                style={{ background: "var(--clr-accent)", color: "white" }}
+              >
+                Sponsored
+              </span>
+            </div>
+            <SectionHeader
+              title="Top Projects in Palwal"
+              sub="Explore new developments in your area"
+            />
+
+            {/* Scroll carousel with nav arrows */}
+            <div className="relative">
+              <button
+                onClick={() => projectsCarousel.scroll("left")}
+                className="absolute -left-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center hover:scale-110 transition-transform hidden sm:flex"
+                style={{ border: "1px solid #e5e7eb" }}
+              >
+                <svg
+                  className="w-5 h-5 text-gray-600"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M15 18l-6-6 6-6" />
+                </svg>
+              </button>
+              <button
+                onClick={() => projectsCarousel.scroll("right")}
+                className="absolute -right-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center hover:scale-110 transition-transform hidden sm:flex"
+                style={{ border: "1px solid #e5e7eb" }}
+              >
+                <svg
+                  className="w-5 h-5 text-gray-600"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              </button>
+
+              <div ref={projectsCarousel.ref} className="snap-carousel">
+                {SAMPLE_PROJECTS.map((proj, i) => (
+                  <div
+                    key={proj.id}
+                    onClick={() => trackAdClick(proj.id)}
+                    className={`reveal-item ${projectsReveal.visible ? "visible" : ""} lift cursor-pointer bg-white rounded-2xl overflow-hidden`}
+                    style={{
+                      width: "clamp(260px, 42vw, 300px)",
+                      transitionDelay: `${i * 100}ms`,
+                      border: "1px solid #e5e7eb",
+                    }}
+                  >
+                    <div className="relative">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={proj.img}
+                        alt={proj.name}
+                        className="w-full h-44 object-cover"
+                      />
+                      <span
+                        className="ad-badge absolute top-3 left-3 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full text-white"
+                        style={{ background: "var(--clr-accent)" }}
+                      >
+                        {proj.tag}
+                      </span>
+                      <span className="absolute top-3 right-3 text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-black/50 text-white/70">
+                        Ad
+                      </span>
+                    </div>
+                    <div className="p-4">
+                      <h3
+                        className="font-bold text-[15px] leading-tight"
+                        style={{ color: "var(--clr-text)" }}
+                      >
+                        {proj.name}
+                      </h3>
+                      <p
+                        className="text-xs mt-0.5"
+                        style={{ color: "var(--clr-text-muted)" }}
+                      >
+                        {proj.builder}
+                      </p>
+                      <div className="flex items-center gap-1.5 mt-2.5">
+                        <svg
+                          className="w-3.5 h-3.5 text-gray-400"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                          <circle cx="12" cy="10" r="3" />
+                        </svg>
+                        <span className="text-xs text-gray-500">
+                          {proj.location}
+                        </span>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between">
+                        <div>
+                          <div className="text-xs text-gray-400">
+                            {proj.type}
+                          </div>
+                          <div
+                            className="text-sm font-bold"
+                            style={{ color: "var(--clr-primary)" }}
+                          >
+                            {proj.price}
+                          </div>
+                        </div>
+                        <span
+                          className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                          style={{
+                            background: "var(--clr-surface)",
+                            color: "var(--clr-primary)",
+                          }}
+                        >
+                          View →
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <p className="text-center text-[11px] text-gray-400 mt-4">
+              Swipe to explore more projects
+            </p>
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════════════
+            IMAGE GALLERY — swipe/scroll showcase
+        ═══════════════════════════════════════════════════════════════ */}
+        <section
+          ref={galleryReveal.ref}
+          className="py-14 max-w-6xl mx-auto px-4 sm:px-6"
+        >
+          <SectionHeader
+            title="Explore Properties"
+            sub="Swipe through our curated gallery"
+          />
+          <div className="relative">
+            <button
+              onClick={() => galleryCarousel.scroll("left")}
+              className="absolute -left-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center hover:scale-110 transition-transform hidden sm:flex"
+              style={{ border: "1px solid #e5e7eb" }}
+            >
+              <svg
+                className="w-5 h-5 text-gray-600"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+            <button
+              onClick={() => galleryCarousel.scroll("right")}
+              className="absolute -right-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center hover:scale-110 transition-transform hidden sm:flex"
+              style={{ border: "1px solid #e5e7eb" }}
+            >
+              <svg
+                className="w-5 h-5 text-gray-600"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
+
+            <div ref={galleryCarousel.ref} className="snap-carousel">
+              {GALLERY_IMAGES.map((img, i) => (
+                <div
+                  key={i}
+                  className={`reveal-item ${galleryReveal.visible ? "visible" : ""} relative rounded-2xl overflow-hidden group cursor-pointer`}
+                  style={{
+                    width: "clamp(220px, 38vw, 280px)",
+                    height: 200,
+                    transitionDelay: `${i * 80}ms`,
+                  }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={img.src}
+                    alt={img.caption}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  />
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      background:
+                        "linear-gradient(0deg, rgba(0,0,0,0.6) 0%, transparent 60%)",
+                    }}
+                  />
+                  <div className="absolute bottom-0 left-0 p-4">
+                    <p className="text-white font-semibold text-sm">
+                      {img.caption}
+                    </p>
+                    {/* Placeholder — replace src with your own images */}
+                    <p className="text-white/50 text-[10px] mt-0.5">
+                      📷 Add your image here
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <p className="text-center text-[11px] text-gray-400 mt-4">
+            ← Swipe or drag to explore →
+          </p>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════════════
             FIND PROPERTY — full-width section
         ═══════════════════════════════════════════════════════════════ */}
         <FindPropertySection />
@@ -720,6 +928,102 @@ export default function HomePage() {
             FAMOUS LOCATIONS
         ═══════════════════════════════════════════════════════════════ */}
         <LocalitiesSection />
+
+        {/* ═══════════════════════════════════════════════════════════════
+            ADVERTISE WITH US — bottom CTA banner
+        ═══════════════════════════════════════════════════════════════ */}
+        <section
+          className="py-16"
+          style={{
+            background:
+              "linear-gradient(135deg, var(--clr-primary-dark) 0%, var(--clr-primary) 50%, var(--clr-primary-light) 100%)",
+          }}
+        >
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 text-center">
+            <div
+              className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 mb-5"
+              style={{
+                background: "rgba(255,255,255,0.1)",
+                border: "1px solid rgba(255,255,255,0.15)",
+              }}
+            >
+              <span className="text-[11px] font-semibold text-white/80 tracking-wider uppercase">
+                For Builders & Dealers
+              </span>
+            </div>
+            <h2
+              className="text-white text-2xl sm:text-3xl font-bold mb-3"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              Advertise With Us
+            </h2>
+            <p
+              className="text-white/50 text-sm sm:text-base max-w-md mx-auto mb-8"
+              style={{ lineHeight: 1.7 }}
+            >
+              Get local visibility for your projects in Palwal. Reach thousands
+              of verified buyers and investors every month.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link
+                href="/advertise"
+                className="cta-shimmer inline-flex items-center gap-2 px-8 py-3.5 rounded-xl font-bold text-sm transition-all duration-200 hover:scale-105"
+                style={{
+                  background: "var(--clr-accent)",
+                  color: "white",
+                  boxShadow: "0 8px 32px rgba(255,107,53,0.4)",
+                }}
+              >
+                <svg
+                  className="w-5 h-5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg>
+                Get Local Visibility
+              </Link>
+              <Link
+                href="/contact"
+                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl font-semibold text-sm text-white/70 hover:text-white transition-colors"
+                style={{ border: "1px solid rgba(255,255,255,0.2)" }}
+              >
+                Contact Sales
+              </Link>
+            </div>
+            {/* Marquee of trust signals */}
+            <div className="mt-10 overflow-hidden opacity-30">
+              <div
+                className="marquee-track flex items-center gap-8 whitespace-nowrap"
+                style={{ width: "max-content" }}
+              >
+                {[...Array(2)].flatMap((_, r) =>
+                  [
+                    "Omaxe City",
+                    "SRS Group",
+                    "RPS Urbania",
+                    "HUDA Palwal",
+                    "Ansal API",
+                    "Raheja Builders",
+                    "Local Developers",
+                    "Independent Sellers",
+                  ].map((name, i) => (
+                    <span
+                      key={`${r}-${i}`}
+                      className="text-white text-sm font-medium mx-4"
+                    >
+                      {name} •
+                    </span>
+                  )),
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* ── Modal ── */}
         {modal && <LeadModal type={modal} onClose={() => setModal(null)} />}
@@ -741,15 +1045,29 @@ function SectionHeader({
   return (
     <div className="flex items-end justify-between mb-5 gap-4">
       <div>
-        <h2 className="hp-font-display text-[1.45rem] font-bold text-gray-900 leading-tight">
+        <h2
+          className="text-xl sm:text-2xl font-bold leading-tight"
+          style={{
+            fontFamily: "var(--font-display)",
+            color: "var(--clr-text)",
+          }}
+        >
           {title}
         </h2>
-        {sub && <p className="text-[12px] text-gray-400 mt-1">{sub}</p>}
+        {sub && (
+          <p
+            className="text-xs mt-1"
+            style={{ color: "var(--clr-text-muted)" }}
+          >
+            {sub}
+          </p>
+        )}
       </div>
       {cta && (
         <Link
           href={cta.href}
-          className="flex items-center gap-1 text-[13px] font-semibold text-primary-600 hover:text-primary-700 whitespace-nowrap transition-colors group"
+          className="flex items-center gap-1 text-[13px] font-semibold whitespace-nowrap transition-colors group"
+          style={{ color: "var(--clr-primary)" }}
         >
           {cta.label}
           <svg
@@ -773,19 +1091,11 @@ function SectionHeader({
 function EmptyState() {
   return (
     <div className="text-center py-16">
-      <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-gray-400">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="w-8 h-8"
-        >
-          <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-          <polyline points="9 22 9 12 15 12 15 22" />
-        </svg>
+      <div
+        className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 text-4xl"
+        style={{ background: "#f3f4f6" }}
+      >
+        🏠
       </div>
       <p className="font-semibold text-gray-700 mb-1">No listings yet</p>
       <p className="text-sm text-gray-400 mb-5">
@@ -793,7 +1103,8 @@ function EmptyState() {
       </p>
       <Link
         href="/post"
-        className="inline-block bg-primary-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-primary-700 transition-colors"
+        className="inline-block text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
+        style={{ background: "var(--clr-primary)" }}
       >
         Post a Property
       </Link>

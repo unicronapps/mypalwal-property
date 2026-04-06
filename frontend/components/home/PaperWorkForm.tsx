@@ -12,14 +12,13 @@ import api from "@/lib/api";
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const CITIES = [
-  "Gurugram",
+  "Palwal",
   "Faridabad",
-  "Panipat",
-  "Karnal",
-  "Rohtak",
-  "Ambala",
-  "Sonipat",
-  "Hisar",
+  "Hathin",
+  "Hodal",
+  "Jewar",
+  "Sohna",
+  "Prithla",
   "Other",
 ];
 

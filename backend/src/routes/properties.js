@@ -13,36 +13,15 @@ const {
 router.get("/attributes/:type", (req, res) => {
   const schema = ATTRIBUTE_SCHEMAS[req.params.type];
   if (!schema)
-    return res
-      .status(404)
-      .json({
-        success: false,
-        message: `Unknown property type: ${req.params.type}`,
-        code: "INVALID_TYPE",
-      });
+    return res.status(404).json({
+      success: false,
+      message: `Unknown property type: ${req.params.type}`,
+      code: "INVALID_TYPE",
+    });
   return res.json({
     success: true,
     data: { type: req.params.type, fields: schema },
   });
-});
-
-// GET /api/properties/featured
-router.get("/featured", async (req, res) => {
-  const { rows } = await query(`
-    SELECT p.id, p.property_id, p.title, p.property_type, p.category,
-           p.price, p.price_unit, p.price_negotiable,
-           p.area_sqft, p.area_display_value, p.area_display_unit,
-           p.status, p.is_verified, p.is_featured, p.listed_at, p.view_count,
-           u.id as owner_id, u.name as owner_name, u.verified_dealer as is_verified_dealer,
-           pl.city, pl.locality,
-           (SELECT url FROM property_media pm WHERE pm.property_id = p.id AND pm.is_cover = true LIMIT 1) as cover_photo
-    FROM properties p
-    JOIN users u ON u.id = p.owner_id
-    LEFT JOIN property_locations pl ON pl.property_id = p.id
-    WHERE p.status = 'active' AND p.is_featured = true
-    ORDER BY p.listed_at DESC LIMIT 8
-  `);
-  return res.json({ success: true, data: { listings: rows } });
 });
 
 // GET /api/properties/my/listings
@@ -281,32 +260,19 @@ router.post("/", verifyToken, async (req, res) => {
     !city ||
     !locality
   ) {
-    return res
-      .status(400)
-      .json({
-        success: false,
-        message:
-          "title, property_type, category, price, area_value, area_unit, city, locality are required",
-        code: "VALIDATION_ERROR",
-      });
+    return res.status(400).json({
+      success: false,
+      message:
+        "title, property_type, category, price, area_value, area_unit, city, locality are required",
+      code: "VALIDATION_ERROR",
+    });
   }
   if (!PROPERTY_TYPES.includes(property_type)) {
-    return res
-      .status(400)
-      .json({
-        success: false,
-        message: `Invalid property type`,
-        code: "INVALID_TYPE",
-      });
-  }
-  if (!contact_call && !contact_whatsapp && !contact_enquiry) {
-    return res
-      .status(400)
-      .json({
-        success: false,
-        message: "At least one contact preference must be enabled",
-        code: "INVALID_CONTACT_PREFERENCE",
-      });
+    return res.status(400).json({
+      success: false,
+      message: `Invalid property type`,
+      code: "INVALID_TYPE",
+    });
   }
 
   // Subscription enforcement: check listing limit
@@ -317,7 +283,7 @@ router.post("/", verifyToken, async (req, res) => {
      ORDER BY s.expires_at DESC LIMIT 1`,
     [req.user.id],
   );
-  const listingLimit = subRows.length ? subRows[0].listing_limit : 10; // Free = 5
+  const listingLimit = subRows.length ? subRows[0].listing_limit : 100; // Free = 5
   if (listingLimit !== -1) {
     const { rows: countRow } = await query(
       `SELECT COUNT(*) FROM properties WHERE owner_id = $1 AND status != 'inactive'`,
@@ -340,26 +306,22 @@ router.post("/", verifyToken, async (req, res) => {
   try {
     area_sqft = toSqft(parseFloat(area_value), area_unit);
   } catch (err) {
-    return res
-      .status(400)
-      .json({
-        success: false,
-        message: err.message,
-        code: "INVALID_AREA_UNIT",
-      });
+    return res.status(400).json({
+      success: false,
+      message: err.message,
+      code: "INVALID_AREA_UNIT",
+    });
   }
 
   let property_id;
   try {
     property_id = await generateUniquePropertyId();
   } catch {
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to generate property ID",
-        code: "ID_GENERATION_FAILED",
-      });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to generate property ID",
+      code: "ID_GENERATION_FAILED",
+    });
   }
 
   const client = await getClient();
@@ -438,13 +400,11 @@ router.post("/", verifyToken, async (req, res) => {
   } catch (err) {
     await client.query("ROLLBACK");
     console.error("Create property error:", err.message);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to create listing",
-        code: "DB_ERROR",
-      });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to create listing",
+      code: "DB_ERROR",
+    });
   } finally {
     client.release();
   }
@@ -457,13 +417,11 @@ router.get("/:id", async (req, res) => {
   const isUUID =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
   if (!isPropertyId && !isUUID) {
-    return res
-      .status(400)
-      .json({
-        success: false,
-        message: "Invalid property ID",
-        code: "INVALID_ID",
-      });
+    return res.status(400).json({
+      success: false,
+      message: "Invalid property ID",
+      code: "INVALID_ID",
+    });
   }
   const whereClause = isPropertyId ? `p.property_id = $1` : `p.id = $1`;
   const paramVal = isPropertyId ? id.toUpperCase() : id;
@@ -484,13 +442,11 @@ router.get("/:id", async (req, res) => {
   );
 
   if (!rows.length)
-    return res
-      .status(404)
-      .json({
-        success: false,
-        message: "Property not found",
-        code: "NOT_FOUND",
-      });
+    return res.status(404).json({
+      success: false,
+      message: "Property not found",
+      code: "NOT_FOUND",
+    });
   const property = rows[0];
 
   // Record view (dedup within 30 min)
@@ -579,26 +535,22 @@ router.put("/:id", verifyToken, async (req, res) => {
       req.params.id,
     )
   ) {
-    return res
-      .status(400)
-      .json({
-        success: false,
-        message: "Invalid property ID",
-        code: "INVALID_ID",
-      });
+    return res.status(400).json({
+      success: false,
+      message: "Invalid property ID",
+      code: "INVALID_ID",
+    });
   }
   const { rows } = await query(
     `SELECT id, owner_id FROM properties WHERE id = $1`,
     [req.params.id],
   );
   if (!rows.length)
-    return res
-      .status(404)
-      .json({
-        success: false,
-        message: "Property not found",
-        code: "NOT_FOUND",
-      });
+    return res.status(404).json({
+      success: false,
+      message: "Property not found",
+      code: "NOT_FOUND",
+    });
   if (rows[0].owner_id !== req.user.id && req.user.role !== "admin") {
     return res
       .status(403)
@@ -638,13 +590,11 @@ router.put("/:id", verifyToken, async (req, res) => {
   }
 
   if (!sets.length)
-    return res
-      .status(400)
-      .json({
-        success: false,
-        message: "No valid fields to update",
-        code: "VALIDATION_ERROR",
-      });
+    return res.status(400).json({
+      success: false,
+      message: "No valid fields to update",
+      code: "VALIDATION_ERROR",
+    });
 
   params.push(req.params.id);
   await query(
@@ -684,26 +634,22 @@ router.delete("/:id", verifyToken, async (req, res) => {
       req.params.id,
     )
   ) {
-    return res
-      .status(400)
-      .json({
-        success: false,
-        message: "Invalid property ID",
-        code: "INVALID_ID",
-      });
+    return res.status(400).json({
+      success: false,
+      message: "Invalid property ID",
+      code: "INVALID_ID",
+    });
   }
   const { rows } = await query(
     `SELECT owner_id FROM properties WHERE id = $1`,
     [req.params.id],
   );
   if (!rows.length)
-    return res
-      .status(404)
-      .json({
-        success: false,
-        message: "Property not found",
-        code: "NOT_FOUND",
-      });
+    return res.status(404).json({
+      success: false,
+      message: "Property not found",
+      code: "NOT_FOUND",
+    });
   if (rows[0].owner_id !== req.user.id && req.user.role !== "admin") {
     return res
       .status(403)

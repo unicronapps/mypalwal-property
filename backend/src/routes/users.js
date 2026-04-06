@@ -12,7 +12,7 @@ router.get("/me", verifyToken, async (req, res) => {
               agency_name, agency_logo_url, bio, verified_dealer,
               last_login_at, created_at, updated_at
        FROM users WHERE id = $1`,
-      [req.user.id]
+      [req.user.id],
     );
     if (!rows.length)
       return res
@@ -28,7 +28,7 @@ router.get("/me", verifyToken, async (req, res) => {
          COUNT(*) FILTER (WHERE status = 'sold') as sold_listings,
          COUNT(*) as total_listings
        FROM properties WHERE owner_id = $1`,
-      [req.user.id]
+      [req.user.id],
     );
 
     // Enquiry counts
@@ -37,7 +37,7 @@ router.get("/me", verifyToken, async (req, res) => {
          COUNT(*) FILTER (WHERE owner_id = $1) as received,
          COUNT(*) FILTER (WHERE buyer_id = $1) as sent
        FROM enquiries WHERE owner_id = $1 OR buyer_id = $1`,
-      [req.user.id]
+      [req.user.id],
     );
 
     // Active subscription
@@ -48,7 +48,7 @@ router.get("/me", verifyToken, async (req, res) => {
        JOIN plans p ON p.id = s.plan_id
        WHERE s.user_id = $1 AND s.status = 'active' AND s.expires_at > NOW()
        ORDER BY s.expires_at DESC LIMIT 1`,
-      [req.user.id]
+      [req.user.id],
     );
     const subscription = subRows[0] || null;
     const listingLimit = subscription ? subscription.listing_limit : 5;
@@ -72,7 +72,11 @@ router.get("/me", verifyToken, async (req, res) => {
     console.error("GET /me error:", err.message);
     return res
       .status(500)
-      .json({ success: false, message: "Server error", code: "INTERNAL_ERROR" });
+      .json({
+        success: false,
+        message: "Server error",
+        code: "INTERNAL_ERROR",
+      });
   }
 });
 
@@ -100,7 +104,7 @@ router.put("/me", verifyToken, async (req, res) => {
   const { rows } = await query(
     `UPDATE users SET ${sets.join(", ")} WHERE id = $${params.length}
      RETURNING id, name, phone, role, avatar_url, agency_name, bio`,
-    params
+    params,
   );
 
   return res.json({ success: true, data: rows[0] });
@@ -126,13 +130,13 @@ router.delete("/me", verifyToken, async (req, res) => {
        bio = NULL,
        updated_at = NOW()
      WHERE id = $1`,
-    [req.user.id]
+    [req.user.id],
   );
 
   // Deactivate all listings
   await query(
     `UPDATE properties SET status = 'inactive' WHERE owner_id = $1 AND status = 'active'`,
-    [req.user.id]
+    [req.user.id],
   );
 
   return res.json({
@@ -164,7 +168,7 @@ router.post("/me/avatar", verifyToken, async (req, res) => {
     const { presignedUrl, s3Key, fileUrl } = await generatePresignedPutUrl(
       "avatars",
       ext,
-      contentType
+      contentType,
     );
 
     // Update avatar_url immediately (client will PUT to presignedUrl)
@@ -187,22 +191,13 @@ router.post("/me/avatar", verifyToken, async (req, res) => {
   }
 });
 
-// PUT /api/users/me/password — no-op for OTP-only auth
-router.put("/me/password", verifyToken, (req, res) => {
-  return res.status(400).json({
-    success: false,
-    message: "Password not supported — this app uses OTP authentication only",
-    code: "NOT_SUPPORTED",
-  });
-});
-
 // GET /api/users/:id/profile — public dealer profile (404 if role=user)
 router.get("/:id/profile", async (req, res) => {
   const { rows } = await query(
     `SELECT id, name, role, avatar_url, agency_name, agency_logo_url, bio,
             verified_dealer, created_at
      FROM users WHERE id = $1 AND is_active = true`,
-    [req.params.id]
+    [req.params.id],
   );
 
   if (!rows.length)
@@ -230,12 +225,12 @@ router.get("/:id/profile", async (req, res) => {
      LEFT JOIN property_locations pl ON pl.property_id = p.id
      WHERE p.owner_id = $1 AND p.status = 'active'
      ORDER BY p.listed_at DESC LIMIT 20`,
-    [req.params.id]
+    [req.params.id],
   );
 
   const { rows: countRow } = await query(
     `SELECT COUNT(*) FROM properties WHERE owner_id = $1 AND status = 'active'`,
-    [req.params.id]
+    [req.params.id],
   );
 
   return res.json({
@@ -271,7 +266,7 @@ router.post("/me/device-token", verifyToken, async (req, res) => {
      ON CONFLICT (token) DO UPDATE SET
        user_id = $1, platform = $3, active = true, last_seen_at = NOW()
      RETURNING id`,
-    [req.user.id, token, platform]
+    [req.user.id, token, platform],
   );
 
   return res.json({

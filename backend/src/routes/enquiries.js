@@ -3,16 +3,53 @@ const router = express.Router();
 const { query } = require("../config/db");
 const { verifyToken } = require("../middleware/auth");
 
-// POST /api/enquiries — submit enquiry (buyer, requires login)
-router.post("/", verifyToken, async (req, res) => {
-  const { property_id, message } = req.body;
-  console.log({ body: req.body });
+// Optional auth middleware — attaches req.user if valid token present, else continues as guest
+function optionalAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) return next();
+  const jwt = require("jsonwebtoken");
+  try {
+    const decoded = jwt.verify(authHeader.split(" ")[1], process.env.JWT_ACCESS_SECRET);
+    req.user = { id: decoded.sub, role: decoded.role, phone: decoded.phone };
+  } catch (_) {
+    // invalid/expired token — treat as guest
+  }
+  next();
+}
+
+// POST /api/enquiries — submit enquiry (logged-in or guest)
+router.post("/", optionalAuth, async (req, res) => {
+  const { property_id, message, guest_name, guest_phone } = req.body;
+
   if (!property_id)
     return res.status(400).json({
       success: false,
       message: "property_id is required",
       code: "VALIDATION_ERROR",
     });
+
+  // Guest must provide name + phone
+  if (!req.user) {
+    if (!guest_name || !guest_name.trim())
+      return res.status(400).json({
+        success: false,
+        message: "Name is required",
+        code: "VALIDATION_ERROR",
+      });
+    const phoneRe = /^[6-9]\d{9}$/;
+    if (!guest_phone || !phoneRe.test(guest_phone.trim()))
+      return res.status(400).json({
+        success: false,
+        message: "Valid 10-digit mobile number is required",
+        code: "VALIDATION_ERROR",
+      });
+  }
+
+  // Capture buyer IP (works behind proxies when trust proxy is enabled)
+  const buyerIp =
+    req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
+    req.socket?.remoteAddress ||
+    null;
 
   // Get property + owner
   const { rows: propRows } = await query(
@@ -23,7 +60,6 @@ router.post("/", verifyToken, async (req, res) => {
      WHERE p.id = $1 AND p.status = 'active'`,
     [property_id],
   );
-  console.log(propRows);
   if (!propRows.length)
     return res.status(404).json({
       success: false,
@@ -40,55 +76,72 @@ router.post("/", verifyToken, async (req, res) => {
       code: "ENQUIRY_DISABLED",
     });
 
-  // Can't enquire on own property
-  if (property.owner_id === req.user.id)
+  // Can't enquire on own property (logged-in only check)
+  if (req.user && property.owner_id === req.user.id)
     return res.status(400).json({
       success: false,
       message: "Cannot enquire on your own property",
       code: "SELF_ENQUIRY",
     });
 
-  // Rate limit: 2 per user per property per 24h
-  const { rows: recent } = await query(
-    `SELECT COUNT(*) FROM enquiries
-     WHERE buyer_id = $1 AND property_id = $2
-       AND created_at > NOW() - INTERVAL '24 hours'`,
-    [req.user.id, property_id],
-  );
-  if (parseInt(recent[0].count, 10) >= 2)
-    return res.status(429).json({
-      success: false,
-      message: "Max 2 enquiries per property per 24 hours",
-      code: "RATE_LIMIT",
-    });
+  let buyerName, buyerPhone, buyerId;
 
-  // Get buyer info
-  const { rows: buyerRows } = await query(
-    `SELECT name, phone FROM users WHERE id = $1`,
-    [req.user.id],
-  );
-  const buyer = buyerRows[0];
+  if (req.user) {
+    // Logged-in: fetch name + phone from DB
+    const { rows: buyerRows } = await query(
+      `SELECT name, phone FROM users WHERE id = $1`,
+      [req.user.id],
+    );
+    buyerName = buyerRows[0].name;
+    buyerPhone = buyerRows[0].phone;
+    buyerId = req.user.id;
+
+    // Rate limit: 2 per user per property per 24h
+    const { rows: recent } = await query(
+      `SELECT COUNT(*) FROM enquiries
+       WHERE buyer_id = $1 AND property_id = $2
+         AND created_at > NOW() - INTERVAL '24 hours'`,
+      [buyerId, property_id],
+    );
+    if (parseInt(recent[0].count, 10) >= 2)
+      return res.status(429).json({
+        success: false,
+        message: "Max 2 enquiries per property per 24 hours",
+        code: "RATE_LIMIT",
+      });
+  } else {
+    buyerName = guest_name.trim();
+    buyerPhone = guest_phone.trim();
+    buyerId = null;
+
+    // Rate limit guests by phone: 2 per phone per property per 24h
+    const { rows: recent } = await query(
+      `SELECT COUNT(*) FROM enquiries
+       WHERE buyer_phone = $1 AND property_id = $2
+         AND created_at > NOW() - INTERVAL '24 hours'`,
+      [buyerPhone, property_id],
+    );
+    if (parseInt(recent[0].count, 10) >= 2)
+      return res.status(429).json({
+        success: false,
+        message: "Max 2 enquiries per property per 24 hours",
+        code: "RATE_LIMIT",
+      });
+  }
 
   // Insert enquiry
   const { rows: enquiry } = await query(
-    `INSERT INTO enquiries (property_id, buyer_id, owner_id, buyer_name, buyer_phone, message)
-     VALUES ($1, $2, $3, $4, $5, $6)
+    `INSERT INTO enquiries (property_id, buyer_id, owner_id, buyer_name, buyer_phone, message, buyer_ip)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING *`,
-    [
-      property_id,
-      req.user.id,
-      property.owner_id,
-      buyer.name,
-      buyer.phone,
-      message || null,
-    ],
+    [property_id, buyerId, property.owner_id, buyerName, buyerPhone, message || null, buyerIp],
   );
 
   // WhatsApp message to poster (wa.me link logged for now)
   if (property.owner_phone) {
     const waMessage = encodeURIComponent(
       `New enquiry on your property "${property.title}" (ID: ${property.property_id})\n` +
-        `From: ${buyer.name || "N/A"}, ${buyer.phone}\n` +
+        `From: ${buyerName || "N/A"}, ${buyerPhone}\n` +
         `Message: ${message || "No message"}`,
     );
     const waUrl = `https://wa.me/91${property.owner_phone}?text=${waMessage}`;
