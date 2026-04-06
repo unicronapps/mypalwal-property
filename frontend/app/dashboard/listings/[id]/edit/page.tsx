@@ -78,6 +78,7 @@ export default function EditPropertyPage() {
   }
 
   async function handleSave() {
+    if (!form) return;
     setSaving(true);
     setError('');
     try {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import OtpInput from '@/components/auth/OtpInput';
 import api from '@/lib/api';
@@ -9,6 +9,14 @@ import { useAuth } from '@/hooks/useAuth';
 type Step = 'phone' | 'otp' | 'profile';
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuth();
