@@ -206,3 +206,11 @@
 //     </div>
 //   );
 // }
+
+export default function NotificationsPage() {
+  return (
+    <div className="p-6 text-center text-gray-500">
+      Notifications coming soon.
+    </div>
+  );
+}
