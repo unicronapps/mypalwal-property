@@ -1,5 +1,5 @@
-export const runtime = 'edge';
 'use client';
+export const runtime = 'edge';
 
 import { useEffect, useState, useCallback } from 'react';
 import api from '@/lib/api';
