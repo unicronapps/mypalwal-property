@@ -10,14 +10,11 @@ function generateAccessToken(user) {
   return jwt.sign(
     { sub: user.id, role: user.role, phone: user.phone, name: user.name },
     process.env.JWT_ACCESS_SECRET,
-    { expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '15m' }
   );
 }
 
 function generateRefreshToken(user) {
-  return jwt.sign({ sub: user.id }, process.env.JWT_REFRESH_SECRET, {
-    expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
-  });
+  return jwt.sign({ sub: user.id }, process.env.JWT_REFRESH_SECRET);
 }
 
 function setRefreshCookie(res, token) {
@@ -25,7 +22,7 @@ function setRefreshCookie(res, token) {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    maxAge: 10 * 365 * 24 * 60 * 60 * 1000, // 10 years
     path: '/',
   });
 }

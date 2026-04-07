@@ -1,43 +1,47 @@
-const { Pool } = require("pg");
+const { neon, neonConfig } = require("@neondatabase/serverless");
+
+neonConfig.fetchConnectionCache = true;
+
+const sql = neon(process.env.DATABASE_URL);
 
 /**
- * Single connection pool for the entire app.
- * Configure via DATABASE_URL — works with Supabase, AWS RDS, Neon, local Postgres, anything.
- * To switch databases: change DATABASE_URL in .env only.
- */
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  // For Supabase/RDS with SSL:
-  ssl: process.env.DB_SSL === "false" ? false : { rejectUnauthorized: false },
-  max: 2,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
-});
-
-pool.on("error", (err) => {
-  console.error("Unexpected DB pool error:", err.message);
-});
-
-/**
- * Run a single query. Use this everywhere.
+ * Run a single query via Neon HTTP.
  * @param {string} text - SQL with $1, $2 placeholders
  * @param {any[]} [params] - parameter values
  */
 async function query(text, params) {
   const start = Date.now();
-  const res = await pool.query(text, params);
+  const rows = await sql.query(text, params ?? []);
   if (process.env.NODE_ENV === "development") {
     console.log(`[DB] ${Date.now() - start}ms — ${text.slice(0, 80)}`);
   }
-  return res;
+  return { rows };
 }
 
 /**
- * Get a client for transactions.
- * Usage: const client = await getClient(); try { await client.query('BEGIN'); ... await client.query('COMMIT'); } finally { client.release(); }
+ * Get a transaction client compatible with existing BEGIN/COMMIT pattern.
+ * Usage: const client = await getClient();
+ *   try { await client.query('BEGIN'); ... await client.query('COMMIT'); }
+ *   finally { client.release(); }
  */
 async function getClient() {
-  return pool.connect();
+  const queries = [];
+
+  const client = {
+    async query(text, params) {
+      if (text.trim().toUpperCase() === "BEGIN") return;
+      if (text.trim().toUpperCase() === "COMMIT") {
+        const results = await sql.transaction(queries.map((q) => sql.query(q.text, q.params ?? [])));
+        return { rows: results[results.length - 1] ?? [] };
+      }
+      if (text.trim().toUpperCase() === "ROLLBACK") return;
+      queries.push({ text, params });
+      return { rows: [] };
+    },
+    release() {},
+  };
+
+  return client;
 }
 
-module.exports = { query, getClient, pool };
+module.exports = { query, getClient, pool: null };

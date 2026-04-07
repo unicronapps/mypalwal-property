@@ -1,7 +1,5 @@
 service: property-backend
 
-plugins:
-  - serverless-offline
 
 provider:
   name: aws

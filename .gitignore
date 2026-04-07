@@ -56,6 +56,10 @@ coverage/
 # --- TypeScript ---
 *.tsbuildinfo
 
+# --- Serverless Framework ---
+.serverless/
+*.zip
+
 # --- Optional/Misc ---
 .eslintcache
 .rpt2_cache/

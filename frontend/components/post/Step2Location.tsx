@@ -1,28 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import type { PostFormData } from '@/app/post/page';
-import api from '@/lib/api';
+import { CITIES, LOCALITIES } from '@/lib/constants';
 
 interface Props { form: PostFormData; onChange: (d: Partial<PostFormData>) => void; onNext: () => void; onBack: () => void; }
 
 export default function Step2Location({ form, onChange, onNext, onBack }: Props) {
-  const [cities, setCities] = useState<string[]>([]);
-  const [localities, setLocalities] = useState<string[]>([]);
-
-  useEffect(() => {
-    api.get('/api/locations/cities').then(({ data }) => {
-      setCities((data.data || []).map((c: any) => c.name));
-    }).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (form.city) {
-      api.get('/api/locations/localities', { params: { city: form.city } }).then(({ data }) => {
-        setLocalities((data.data || []).map((l: any) => l.name));
-      }).catch(() => setLocalities([]));
-    }
-  }, [form.city]);
 
   function validate() {
     if (!form.city) return 'City is required';
@@ -45,20 +28,15 @@ export default function Step2Location({ form, onChange, onNext, onBack }: Props)
           <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
           <select value={form.city} onChange={e => onChange({ city: e.target.value, locality: '' })} className="input-field">
             <option value="">Select city</option>
-            {cities.map(c => <option key={c} value={c}>{c}</option>)}
+            {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Locality *</label>
-          {localities.length > 0 ? (
-            <select value={form.locality} onChange={e => onChange({ locality: e.target.value })} className="input-field">
-              <option value="">Select locality</option>
-              {localities.map(l => <option key={l} value={l}>{l}</option>)}
-            </select>
-          ) : (
-            <input type="text" value={form.locality} onChange={e => onChange({ locality: e.target.value })}
-              placeholder="Enter locality" className="input-field" />
-          )}
+          <select value={form.locality} onChange={e => onChange({ locality: e.target.value })} className="input-field">
+            <option value="">Select locality</option>
+            {LOCALITIES.map(l => <option key={l} value={l}>{l}</option>)}
+          </select>
         </div>
       </div>
 

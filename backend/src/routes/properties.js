@@ -275,33 +275,6 @@ router.post("/", verifyToken, async (req, res) => {
     });
   }
 
-  // Subscription enforcement: check listing limit
-  const { rows: subRows } = await query(
-    `SELECT p.listing_limit FROM subscriptions s
-     JOIN plans p ON p.id = s.plan_id
-     WHERE s.user_id = $1 AND s.status = 'active' AND s.expires_at > NOW()
-     ORDER BY s.expires_at DESC LIMIT 1`,
-    [req.user.id],
-  );
-  const listingLimit = subRows.length ? subRows[0].listing_limit : 100; // Free = 5
-  if (listingLimit !== -1) {
-    const { rows: countRow } = await query(
-      `SELECT COUNT(*) FROM properties WHERE owner_id = $1 AND status != 'inactive'`,
-      [req.user.id],
-    );
-    if (parseInt(countRow[0].count, 10) >= listingLimit) {
-      return res.status(403).json({
-        success: false,
-        message: `You have reached your listing limit (${listingLimit}). Upgrade your plan to post more.`,
-        code: "LISTING_LIMIT_REACHED",
-        data: {
-          upgradeUrl: "/dashboard/dealer/subscription",
-          limit: listingLimit,
-        },
-      });
-    }
-  }
-
   let area_sqft;
   try {
     area_sqft = toSqft(parseFloat(area_value), area_unit);

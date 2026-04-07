@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import type { PostFormData } from '@/app/post/page';
-import api from '@/lib/api';
+import { ATTRIBUTE_SCHEMAS } from '@/lib/constants';
 
 interface FieldDef {
   label: string;
@@ -18,15 +17,7 @@ const AMENITY_OPTIONS = ['parking','lift','gym','swimming_pool','security','powe
 interface Props { form: PostFormData; onChange: (d: Partial<PostFormData>) => void; onNext: () => void; onBack: () => void; }
 
 export default function Step3Attributes({ form, onChange, onNext, onBack }: Props) {
-  const [schema, setSchema] = useState<Record<string, FieldDef>>({});
-
-  useEffect(() => {
-    if (form.property_type) {
-      api.get(`/api/properties/attributes/${form.property_type}`).then(({ data }) => {
-        setSchema(data.data.fields || {});
-      }).catch(() => setSchema({}));
-    }
-  }, [form.property_type]);
+  const schema: Record<string, FieldDef> = form.property_type ? (ATTRIBUTE_SCHEMAS as any)[form.property_type] ?? {} : {};
 
   function setAttr(key: string, value: any) {
     onChange({ attributes: { ...form.attributes, [key]: value } });

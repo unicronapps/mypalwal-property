@@ -35,6 +35,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         storeAccessToken(data.data.accessToken);
         setUser(data.data.user);
       } catch {
+        // Stale refresh_token cookie — clear it so middleware stops redirecting
+        try { await api.post('/api/auth/logout'); } catch {}
+        clearAccessToken();
         setUser(null);
       } finally {
         setIsLoading(false);
