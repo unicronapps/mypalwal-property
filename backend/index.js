@@ -5,9 +5,22 @@ const cookieParser = require("cookie-parser");
 
 const app = express();
 
+const ALLOWED_ORIGINS = [
+  "http://localhost:3000",
+  ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(",").map(u => u.trim()) : []),
+];
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: (origin, callback) => {
+      // allow non-browser requests (curl, Postman, Lambda warmup)
+      if (!origin) return callback(null, true);
+      const allowed =
+        ALLOWED_ORIGINS.some(o => o === origin) ||
+        /^https:\/\/[a-z0-9-]+\.mypalwal-property\.pages\.dev$/.test(origin);
+      if (allowed) return callback(null, true);
+      callback(new Error("CORS: origin not allowed"));
+    },
     credentials: true,
   }),
 );
@@ -38,6 +51,10 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+app.get("/test", (req, res) => {
+  res.json({ success: true, message: "warm" });
+});
+
 app.use((req, res) => {
   res
     .status(404)
@@ -53,7 +70,11 @@ app.use((err, req, res, next) => {
   });
 });
 
-const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`Backend running on port ${PORT}`);
-});
+module.exports = app;
+
+if (require.main === module) {
+  const PORT = process.env.PORT || 4000;
+  app.listen(PORT, () => {
+    console.log(`Backend running on port ${PORT}`);
+  });
+}

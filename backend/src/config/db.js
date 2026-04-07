@@ -9,7 +9,7 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   // For Supabase/RDS with SSL:
   ssl: process.env.DB_SSL === "false" ? false : { rejectUnauthorized: false },
-  max: 20,
+  max: 2,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
 });
