@@ -1,4 +1,5 @@
 'use client';
+export const runtime = 'edge';
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -78,6 +79,7 @@ export default function EditPropertyPage() {
   }
 
   async function handleSave() {
+    if (!form) return;
     setSaving(true);
     setError('');
     try {

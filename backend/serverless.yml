@@ -1,0 +1,42 @@
+service: property-backend
+
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: dev
+  region: us-east-1
+  memorySize: 512
+  timeout: 29
+  environment:
+    NODE_ENV: production
+    FRONTEND_URL: ${env:FRONTEND_URL, ""}
+
+package:
+  exclude:
+    - .git/**
+    - node_modules/.cache/**
+    - '*.md'
+
+functions:
+  app:
+    handler: handler.handler
+    events:
+      - http:
+          path: /
+          method: ANY
+      - http:
+          path: /{proxy+}
+          method: ANY
+
+  warmup:
+    handler: handler.handler
+    events:
+      - schedule:
+          rate: rate(10 minutes)
+          enabled: true
+          input:
+            path: /test
+            httpMethod: GET
+            headers:
+              Content-Type: application/json

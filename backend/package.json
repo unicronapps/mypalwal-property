@@ -5,11 +5,15 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "offline": "serverless offline",
+    "deploy": "serverless deploy",
+    "deploy:prod": "serverless deploy --stage prod"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.490.0",
     "@aws-sdk/s3-request-presigner": "^3.490.0",
+    "@neondatabase/serverless": "^1.0.2",
     "axios": "^1.6.0",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
@@ -20,6 +24,7 @@
     "node-cron": "^4.2.1",
     "pg": "^8.11.3",
     "razorpay": "^2.9.2",
+    "serverless-http": "^4.0.0",
     "uuid": "^9.0.0"
   },
   "devDependencies": {

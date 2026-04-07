@@ -1,4 +1,5 @@
 "use client";
+export const runtime = "edge";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
@@ -173,14 +174,11 @@ export default function HomePage() {
   useEffect(() => {
     Promise.all([
       api
-        .get("/api/properties/featured")
-        .catch(() => ({ data: { data: { listings: [] } } })),
-      api
         .get("/api/properties", { params: { sort: "newest", limit: 8 } })
         .catch(() => ({ data: { data: { listings: [] } } })),
     ])
-      .then(([feat, rec]) => {
-        setFeatured(feat.data?.data?.listings || []);
+      .then(([rec]) => {
+        setFeatured([]);
         setRecent(rec.data?.data?.listings || []);
       })
       .finally(() => setLoading(false));

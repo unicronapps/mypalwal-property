@@ -70,13 +70,11 @@ router.get("/me", verifyToken, async (req, res) => {
     });
   } catch (err) {
     console.error("GET /me error:", err.message);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Server error",
-        code: "INTERNAL_ERROR",
-      });
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      code: "INTERNAL_ERROR",
+    });
   }
 });
 
@@ -240,38 +238,6 @@ router.get("/:id/profile", async (req, res) => {
       listings,
       total_listings: parseInt(countRow[0].count, 10),
     },
-  });
-});
-
-// POST /api/users/me/device-token — upsert FCM token
-router.post("/me/device-token", verifyToken, async (req, res) => {
-  const { token, platform } = req.body;
-  if (!token || !platform)
-    return res.status(400).json({
-      success: false,
-      message: "token and platform required",
-      code: "VALIDATION_ERROR",
-    });
-
-  if (!["web", "ios", "android"].includes(platform))
-    return res.status(400).json({
-      success: false,
-      message: "platform must be web, ios, or android",
-      code: "VALIDATION_ERROR",
-    });
-
-  const { rows } = await query(
-    `INSERT INTO device_tokens (user_id, token, platform, active, last_seen_at)
-     VALUES ($1, $2, $3, true, NOW())
-     ON CONFLICT (token) DO UPDATE SET
-       user_id = $1, platform = $3, active = true, last_seen_at = NOW()
-     RETURNING id`,
-    [req.user.id, token, platform],
-  );
-
-  return res.json({
-    success: true,
-    data: { id: rows[0].id, message: "Device token registered" },
   });
 });
 

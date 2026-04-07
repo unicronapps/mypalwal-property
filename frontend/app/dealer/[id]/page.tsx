@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { formatPrice, formatArea, PROPERTY_TYPE_LABELS, CATEGORY_LABELS, formatRelativeDate } from '@/lib/format';

@@ -58,29 +58,33 @@ router.post("/", softAuth, async (req, res) => {
 
   console.log(req.user);
 
-  const { rows } = await query(
-    `INSERT INTO property_request_leads
-       (name, phone, city, requirement, localities, other_locality,
-        budget_min, budget_max, created_by, submitted_by_user_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-     RETURNING id`,
-    [
-      name.trim(),
-      phone.trim(),
-      city.trim(),
-      requirement.trim(),
-      Array.isArray(localities) ? localities : [],
-      otherLocality || null,
-      budgetMin || null,
-      budgetMax || null,
-      createdBy,
-      submittedByUserId,
-    ],
-  );
+  try {
+    const { rows } = await query(
+      `INSERT INTO property_request_leads
+         (name, phone, city, requirement, localities, other_locality,
+          budget_min, budget_max, created_by, submitted_by_user_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       RETURNING id`,
+      [
+        name.trim(),
+        phone.trim(),
+        city.trim(),
+        requirement.trim(),
+        Array.isArray(localities) ? localities : [],
+        otherLocality || null,
+        budgetMin || null,
+        budgetMax || null,
+        createdBy,
+        submittedByUserId,
+      ],
+    );
 
-  const leadId = rows[0].id;
-
-  return res.status(201).json({ success: true, id: leadId });
+    const leadId = rows[0].id;
+    return res.status(201).json({ success: true, id: leadId });
+  } catch (err) {
+    console.error("leads/find-property DB error:", err.message);
+    return res.status(500).json({ success: false, message: "Internal server error", code: "DB_ERROR" });
+  }
 });
 
 module.exports = router;

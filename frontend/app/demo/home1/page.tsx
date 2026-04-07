@@ -1,4 +1,5 @@
 "use client";
+export const runtime = "edge";
 
 import { all } from "axios";
 import { Sign } from "crypto";
