@@ -529,10 +529,10 @@ export default function HomePage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-white text-[15px] leading-tight">
-                  Find a Property For Me
+                  Submit Property Demand
                 </p>
                 <p className="text-[12.5px] text-blue-100/70 mt-0.5">
-                  Share your need — we shortlist & call within 24h
+                  Tell us your need — our team calls you back
                 </p>
               </div>
               <svg
@@ -577,10 +577,10 @@ export default function HomePage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-white text-[15px] leading-tight">
-                  Property Paper Completion
+                  Registry, Documents & Paperwork
                 </p>
                 <p className="text-[12.5px] text-amber-100/70 mt-0.5">
-                  Registry, mutation, NOC — handled end-to-end
+                  Registry, mutation, NOC — we handle it for you
                 </p>
               </div>
               <svg

@@ -1,5 +1,3 @@
-import api from "@/lib/api";
-import { useState } from "react";
 import FindPropertyForm from "./FindPropertyForm";
 
 const FindPropertySection = () => {
@@ -9,16 +7,16 @@ const FindPropertySection = () => {
         {/* Left copy */}
         <div className="text-white">
           <span className="inline-block bg-white/10 border border-white/20 text-xs font-semibold rounded-full px-3 py-1 mb-4">
-            Your Dream Property, Search Made Simple
+            Free Service — No Charges
           </span>
           <h2 className="text-2xl md:text-3xl font-extrabold leading-tight mb-3">
-            Can't find the
+            Submit Your
             <br />
-            right property?
+            Property Demand
           </h2>
           <p className="text-primary-200 text-sm leading-relaxed mb-6">
-            Tell us what you're looking for. Our team reviews every request
-            personally and calls back with shortlisted options within 24 hours.
+            Tell us your budget and needs. Our local team personally reviews
+            every demand and calls you back within 24 hours with matching options.
           </p>
           <ul className="space-y-2">
             {[
@@ -52,7 +50,7 @@ const FindPropertySection = () => {
         {/* Right form card */}
         <div className="bg-white rounded-2xl p-6 shadow-2xl shadow-primary-900/20">
           <p className="font-bold text-gray-900 text-base mb-4">
-            Submit Requirement
+            Submit Property Demand
           </p>
           <FindPropertyForm onClose={() => null} />
         </div>

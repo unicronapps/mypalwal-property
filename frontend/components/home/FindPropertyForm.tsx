@@ -813,7 +813,7 @@ export default function FindPropertyForm({ onClose }: { onClose: () => void }) {
         ) : status === "error" ? (
           "Try again"
         ) : (
-          "Find My Property"
+          "Submit Demand"
         )}
       </button>
     </form>

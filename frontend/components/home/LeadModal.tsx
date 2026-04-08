@@ -8,12 +8,12 @@ type ModalType = 'paperwork' | 'find-property';
 
 const MODAL_META = {
   paperwork: {
-    title: 'Property Paper Completion',
-    subtitle: 'Registry, mutation, NOC — we handle it all. Our experts will call you.',
+    title: 'Registry, Documents & Paperwork',
+    subtitle: 'Registry, mutation, NOC — we handle it all for you. Our experts will call you.',
   },
   'find-property': {
-    title: 'Find a Property For Me',
-    subtitle: 'Tell us what you need. We\'ll shortlist matching properties and call back.',
+    title: 'Submit Property Demand',
+    subtitle: 'Tell us your budget & needs — our local team calls you back within 24 hours.',
   },
 };
 
