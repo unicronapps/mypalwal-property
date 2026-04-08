@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const { randomUUID } = require("crypto");
 const { query, getClient } = require("../config/db");
 const { verifyToken, requireRole } = require("../middleware/auth");
 const { toSqft } = require("../utils/areaConvert");
@@ -297,22 +298,21 @@ router.post("/", verifyToken, async (req, res) => {
     });
   }
 
+  const db_property_id = randomUUID();
   const client = await getClient();
   try {
     await client.query("BEGIN");
 
-    const {
-      rows: [property],
-    } = await client.query(
+    await client.query(
       `
       INSERT INTO properties (
-        property_id, owner_id, title, description, property_type, category,
+        id, property_id, owner_id, title, description, property_type, category,
         price, price_negotiable, price_unit, area_sqft, area_display_value, area_display_unit,
         status, possession_status, contact_call, contact_whatsapp, contact_enquiry, attributes
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
-      RETURNING id, property_id
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
     `,
       [
+        db_property_id,
         property_id,
         req.user.id,
         title.trim(),
@@ -340,7 +340,7 @@ router.post("/", verifyToken, async (req, res) => {
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
     `,
       [
-        property.id,
+        db_property_id,
         city.trim(),
         locality.trim(),
         pincode || null,
@@ -356,7 +356,7 @@ router.post("/", verifyToken, async (req, res) => {
       for (const amenity of amenities) {
         await client.query(
           `INSERT INTO property_amenities (property_id, amenity) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-          [property.id, amenity],
+          [db_property_id, amenity],
         );
       }
     }
@@ -365,18 +365,19 @@ router.post("/", verifyToken, async (req, res) => {
     return res.status(201).json({
       success: true,
       data: {
-        id: property.id,
-        property_id: property.property_id,
+        id: db_property_id,
+        property_id,
         message: "Listing created successfully",
       },
     });
   } catch (err) {
     await client.query("ROLLBACK");
-    console.error("Create property error:", err.message);
+    console.error("Create property error:", err.message, err.detail, err.code);
     return res.status(500).json({
       success: false,
       message: "Failed to create listing",
       code: "DB_ERROR",
+      detail: err.message,
     });
   } finally {
     client.release();

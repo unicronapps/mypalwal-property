@@ -7,7 +7,11 @@ const app = express();
 
 const ALLOWED_ORIGINS = [
   "http://localhost:3000",
-  ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(",").map(u => u.trim()) : []),
+  "https://mypalwal.com", // <-- Added your main domain
+  "https://www.mypalwal.com",
+  ...(process.env.FRONTEND_URL
+    ? process.env.FRONTEND_URL.split(",").map((u) => u.trim())
+    : []),
 ];
 
 app.use(
@@ -16,7 +20,7 @@ app.use(
       // allow non-browser requests (curl, Postman, Lambda warmup)
       if (!origin) return callback(null, true);
       const allowed =
-        ALLOWED_ORIGINS.some(o => o === origin) ||
+        ALLOWED_ORIGINS.some((o) => o === origin) ||
         /^https:\/\/[a-z0-9-]+\.mypalwal-property\.pages\.dev$/.test(origin);
       if (allowed) return callback(null, true);
       callback(new Error("CORS: origin not allowed"));

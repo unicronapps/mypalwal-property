@@ -4,16 +4,25 @@ import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
+import HelpFAB from '@/components/ui/HelpFAB';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'PropertyX — Find Properties in Tier 2 Cities | Haryana Real Estate',
-  description: 'Buy, sell, and rent properties across Haryana & tier 2 Indian cities. Verified listings in Gurugram, Faridabad, Panipat, Karnal, Rohtak & more. Direct owner contact.',
+  title: 'MyPalwal — Buy, Sell & Rent Properties in Palwal | Haryana Real Estate',
+  description: 'Find verified property listings in Palwal, Haryana. Buy, sell, and rent flats, plots, houses and commercial spaces. Direct owner contact. MyPalwal.com',
+  metadataBase: new URL('https://mypalwal.com'),
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
   openGraph: {
-    title: 'PropertyX — Find Properties in Tier 2 Cities',
-    description: 'Buy, sell, and rent properties across Haryana & tier 2 Indian cities. Verified listings, direct owner contact.',
+    title: 'MyPalwal — Palwal\'s #1 Property Portal',
+    description: 'Buy, sell, and rent properties in Palwal, Haryana. Verified listings, direct owner contact. Visit mypalwal.com',
     type: 'website',
+    url: 'https://mypalwal.com',
+    siteName: 'MyPalwal',
   },
 };
 
@@ -30,6 +39,7 @@ export default function RootLayout({
             <Navbar />
             <main className="flex-1">{children}</main>
             <Footer />
+            <HelpFAB />
           </div>
         </AuthProvider>
       </body>
