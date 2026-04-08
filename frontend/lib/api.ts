@@ -1,18 +1,20 @@
-import axios from 'axios';
+import axios from "axios";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "https://9h4oapssea.execute-api.us-east-1.amazonaws.com/dev";
 
 const api = axios.create({
   baseURL: API_URL,
   withCredentials: true,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
 // Attach access token from memory to every request
 api.interceptors.request.use((config) => {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     const token = window.__accessToken;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -31,7 +33,7 @@ api.interceptors.response.use(
     const original = error.config;
 
     // Don't intercept refresh or auth calls — let them fail normally
-    if (original?.url?.includes('/api/auth/')) {
+    if (original?.url?.includes("/api/auth/")) {
       return Promise.reject(error);
     }
 
@@ -52,11 +54,11 @@ api.interceptors.response.use(
         const { data } = await axios.post(
           `${API_URL}/api/auth/refresh`,
           {},
-          { withCredentials: true }
+          { withCredentials: true },
         );
         const newToken = data.data.accessToken;
 
-        if (typeof window !== 'undefined') {
+        if (typeof window !== "undefined") {
           window.__accessToken = newToken;
         }
 
@@ -67,7 +69,7 @@ api.interceptors.response.use(
         return api(original);
       } catch {
         refreshQueue = [];
-        if (typeof window !== 'undefined') {
+        if (typeof window !== "undefined") {
           window.__accessToken = undefined;
         }
         return Promise.reject(error);
@@ -77,7 +79,7 @@ api.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 declare global {
