@@ -10,22 +10,18 @@ function generateAccessToken(user) {
   return jwt.sign(
     { sub: user.id, role: user.role, phone: user.phone, name: user.name },
     process.env.JWT_ACCESS_SECRET,
+    { expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '15m' },
   );
 }
 
 function generateRefreshToken(user) {
-  return jwt.sign({ sub: user.id }, process.env.JWT_REFRESH_SECRET);
+  return jwt.sign(
+    { sub: user.id },
+    process.env.JWT_REFRESH_SECRET,
+    { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '30d' },
+  );
 }
 
-function setRefreshCookie(res, token) {
-  res.cookie('refresh_token', token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 10 * 365 * 24 * 60 * 60 * 1000, // 10 years
-    path: '/',
-  });
-}
 
 function validatePhone(phone) {
   return /^[6-9]\d{9}$/.test(phone);
@@ -83,12 +79,12 @@ router.post('/otp/verify', async (req, res) => {
 
   const accessToken = generateAccessToken(user);
   const refreshToken = generateRefreshToken(user);
-  setRefreshCookie(res, refreshToken);
 
   return res.json({
     success: true,
     data: {
       accessToken,
+      refreshToken,
       isNewUser,
       user: { id: user.id, name: user.name, role: user.role, phone: user.phone },
     },
@@ -111,17 +107,16 @@ router.post('/complete-profile', verifyToken, async (req, res) => {
   const user = rows[0];
   const accessToken = generateAccessToken(user);
   const refreshToken = generateRefreshToken(user);
-  setRefreshCookie(res, refreshToken);
 
   return res.json({
     success: true,
-    data: { accessToken, user: { id: user.id, name: user.name, role: user.role, phone: user.phone } },
+    data: { accessToken, refreshToken, user: { id: user.id, name: user.name, role: user.role, phone: user.phone } },
   });
 });
 
 // POST /api/auth/refresh
 router.post('/refresh', async (req, res) => {
-  const token = req.cookies?.refresh_token;
+  const token = req.body?.refreshToken;
   if (!token) return res.status(401).json({ success: false, message: 'Refresh token not found', code: 'NO_REFRESH_TOKEN' });
 
   let decoded;
@@ -141,17 +136,15 @@ router.post('/refresh', async (req, res) => {
   const user = rows[0];
   const accessToken = generateAccessToken(user);
   const refreshToken = generateRefreshToken(user);
-  setRefreshCookie(res, refreshToken);
 
   return res.json({
     success: true,
-    data: { accessToken, user: { id: user.id, name: user.name, role: user.role, phone: user.phone } },
+    data: { accessToken, refreshToken, user: { id: user.id, name: user.name, role: user.role, phone: user.phone } },
   });
 });
 
 // POST /api/auth/logout
 router.post('/logout', (req, res) => {
-  res.clearCookie('refresh_token', { path: '/' });
   return res.json({ success: true, data: { message: 'Logged out successfully' } });
 });
 

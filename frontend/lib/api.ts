@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getAccessToken, getRefreshToken, storeAccessToken, storeRefreshToken, clearTokens } from "./auth";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
@@ -6,19 +7,16 @@ const API_URL =
 
 const api = axios.create({
   baseURL: API_URL,
-  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Attach access token from memory to every request
+// Attach access token from localStorage to every request
 api.interceptors.request.use((config) => {
-  if (typeof window !== "undefined") {
-    const token = window.__accessToken;
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+  const token = getAccessToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
@@ -32,7 +30,7 @@ api.interceptors.response.use(
   async (error) => {
     const original = error.config;
 
-    // Don't intercept refresh or auth calls — let them fail normally
+    // Don't intercept auth calls — let them fail normally
     if (original?.url?.includes("/api/auth/")) {
       return Promise.reject(error);
     }
@@ -51,27 +49,23 @@ api.interceptors.response.use(
 
       isRefreshing = true;
       try {
-        const { data } = await axios.post(
-          `${API_URL}/api/auth/refresh`,
-          {},
-          { withCredentials: true },
-        );
-        const newToken = data.data.accessToken;
+        const refreshToken = getRefreshToken();
+        if (!refreshToken) throw new Error("No refresh token");
 
-        if (typeof window !== "undefined") {
-          window.__accessToken = newToken;
-        }
+        const { data } = await axios.post(`${API_URL}/api/auth/refresh`, { refreshToken });
+        const newAccessToken = data.data.accessToken;
 
-        refreshQueue.forEach((cb) => cb(newToken));
+        storeAccessToken(newAccessToken);
+        storeRefreshToken(data.data.refreshToken);
+
+        refreshQueue.forEach((cb) => cb(newAccessToken));
         refreshQueue = [];
 
-        original.headers.Authorization = `Bearer ${newToken}`;
+        original.headers.Authorization = `Bearer ${newAccessToken}`;
         return api(original);
       } catch {
         refreshQueue = [];
-        if (typeof window !== "undefined") {
-          window.__accessToken = undefined;
-        }
+        clearTokens();
         return Promise.reject(error);
       } finally {
         isRefreshing = false;
@@ -81,11 +75,5 @@ api.interceptors.response.use(
     return Promise.reject(error);
   },
 );
-
-declare global {
-  interface Window {
-    __accessToken?: string;
-  }
-}
 
 export default api;

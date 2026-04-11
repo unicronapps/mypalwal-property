@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import api from '@/lib/api';
-import { storeAccessToken, clearAccessToken, decodeToken } from '@/lib/auth';
+import { storeAccessToken, storeRefreshToken, clearTokens, getAccessToken, getRefreshToken, isTokenExpired, decodeToken } from '@/lib/auth';
 
 export type UserRole = 'user' | 'dealer' | 'admin';
 
@@ -17,7 +17,7 @@ interface AuthContextValue {
   user: AuthUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (accessToken: string, user: AuthUser) => void;
+  login: (accessToken: string, refreshToken: string, user: AuthUser) => void;
   logout: () => Promise<void>;
   hasRole: (role: UserRole) => boolean;
 }
@@ -31,13 +31,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const restoreSession = async () => {
       try {
-        const { data } = await api.post('/api/auth/refresh');
+        // If access token is still valid, restore from it directly
+        const accessToken = getAccessToken();
+        if (accessToken && !isTokenExpired(accessToken)) {
+          const payload = decodeToken(accessToken);
+          if (payload) {
+            setUser({ id: payload.sub, name: payload.name ?? '', phone: payload.phone, role: payload.role });
+            setIsLoading(false);
+            return;
+          }
+        }
+
+        // Access token expired — try refresh token from localStorage
+        const refreshToken = getRefreshToken();
+        if (!refreshToken) {
+          setIsLoading(false);
+          return;
+        }
+
+        const { data } = await api.post('/api/auth/refresh', { refreshToken });
         storeAccessToken(data.data.accessToken);
+        storeRefreshToken(data.data.refreshToken);
         setUser(data.data.user);
       } catch {
-        // Stale refresh_token cookie — clear it so middleware stops redirecting
-        try { await api.post('/api/auth/logout'); } catch {}
-        clearAccessToken();
+        clearTokens();
         setUser(null);
       } finally {
         setIsLoading(false);
@@ -46,8 +63,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     restoreSession();
   }, []);
 
-  const login = useCallback((accessToken: string, userData: AuthUser) => {
+  const login = useCallback((accessToken: string, refreshToken: string, userData: AuthUser) => {
     storeAccessToken(accessToken);
+    storeRefreshToken(refreshToken);
     setUser(userData);
   }, []);
 
@@ -55,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await api.post('/api/auth/logout');
     } catch {}
-    clearAccessToken();
+    clearTokens();
     setUser(null);
   }, []);
 

@@ -71,10 +71,10 @@ function LoginForm() {
       const { data } = await api.post('/api/auth/otp/verify', { phone, otp });
       if (data.data.isNewUser) {
         // Store token in memory so complete-profile call can use it
-        login(data.data.accessToken, data.data.user);
+        login(data.data.accessToken, data.data.refreshToken, data.data.user);
         setStep('profile');
       } else {
-        login(data.data.accessToken, data.data.user);
+        login(data.data.accessToken, data.data.refreshToken, data.data.user);
         router.push(searchParams.get('redirect') || '/');
       }
     } catch (err: any) {
@@ -92,7 +92,7 @@ function LoginForm() {
     setIsLoading(true);
     try {
       const { data } = await api.post('/api/auth/complete-profile', { name, role });
-      login(data.data.accessToken, data.data.user);
+      login(data.data.accessToken, data.data.refreshToken, data.data.user);
       router.push(searchParams.get('redirect') || '/');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to save profile');

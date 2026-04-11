@@ -28,7 +28,7 @@ export default function LoginForm() {
         : { email: identifier.trim().toLowerCase(), password };
 
       const { data } = await api.post('/api/auth/login', payload);
-      login(data.data.accessToken, data.data.user);
+      login(data.data.accessToken, data.data.refreshToken, data.data.user);
 
       const redirect = searchParams.get('redirect') || '/';
       router.push(redirect);
