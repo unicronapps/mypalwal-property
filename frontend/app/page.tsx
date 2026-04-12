@@ -33,6 +33,8 @@ const SAMPLE_PROJECTS = [
     location: "NH-2, Palwal",
     img: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=600&q=80&auto=format",
     tag: "New Launch",
+    link: "https://www.omaxe.com/residential-property-in-palwal/omaxe-city-plots-3",
+    brochure: "https://housing-is-01.s3.amazonaws.com/6a32315a/4ad6dd53977c37b2f23ace61367205ea/original.pdf",
   },
   {
     id: "proj-2",
@@ -735,7 +737,10 @@ export default function HomePage() {
                 {SAMPLE_PROJECTS.map((proj, i) => (
                   <div
                     key={proj.id}
-                    onClick={() => trackAdClick(proj.id)}
+                    onClick={() => {
+                      trackAdClick(proj.id);
+                      if ((proj as any).link) window.open((proj as any).link, "_blank", "noopener,noreferrer");
+                    }}
                     className={`reveal-item ${projectsReveal.visible ? "visible" : ""} lift cursor-pointer bg-white rounded-2xl overflow-hidden`}
                     style={{
                       width: "clamp(260px, 42vw, 300px)",
@@ -802,15 +807,32 @@ export default function HomePage() {
                             {proj.price}
                           </div>
                         </div>
-                        <span
-                          className="text-xs font-semibold px-3 py-1.5 rounded-lg"
-                          style={{
-                            background: "var(--clr-surface)",
-                            color: "var(--clr-primary)",
-                          }}
-                        >
-                          View →
-                        </span>
+                        <div className="flex items-center gap-2">
+                          {(proj as any).brochure && (
+                            <a
+                              href={(proj as any).brochure}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                              style={{
+                                background: "#FFF3EC",
+                                color: "var(--clr-accent)",
+                              }}
+                            >
+                              Brochure
+                            </a>
+                          )}
+                          <span
+                            className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                            style={{
+                              background: "var(--clr-surface)",
+                              color: "var(--clr-primary)",
+                            }}
+                          >
+                            View →
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
