@@ -10,7 +10,7 @@ const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 
 const MAX_PHOTOS = 20;
-const ALLOWED_IMAGE_TYPES = ['image/jpeg','image/png','image/webp','image/heic'];
+const ALLOWED_IMAGE_TYPES = ['image/jpeg','image/jpg','image/png','image/webp','image/heic','image/heif'];
 const ALLOWED_VIDEO_TYPES = ['video/mp4','video/quicktime','video/x-msvideo'];
 
 router.post('/presign', verifyToken, async (req, res) => {

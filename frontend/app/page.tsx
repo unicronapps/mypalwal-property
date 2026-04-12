@@ -928,6 +928,83 @@ export default function HomePage() {
         <LocalitiesSection />
 
         {/* ═══════════════════════════════════════════════════════════════
+            CIRCLE RATES — Palwal CTA
+        ═══════════════════════════════════════════════════════════════ */}
+        <section className="py-14 px-4 sm:px-6" style={{ background: "var(--clr-surface-warm)" }}>
+          <div className="max-w-6xl mx-auto">
+            <Link href="/circle-rates/palwal" className="block group">
+              <div
+                className="relative rounded-3xl overflow-hidden lift cursor-pointer"
+                style={{
+                  background: "linear-gradient(135deg, #0F2E6B 0%, #1746A2 45%, #2563EB 100%)",
+                  boxShadow: "0 24px 64px rgba(23,70,162,0.35)",
+                }}
+              >
+                {/* Decorative blobs */}
+                <div className="absolute top-[-60px] right-[-60px] w-[280px] h-[280px] rounded-full opacity-10 pointer-events-none"
+                  style={{ background: "radial-gradient(circle, #FF6B35, transparent 70%)" }} />
+                <div className="absolute bottom-[-40px] left-[30%] w-[200px] h-[200px] rounded-full opacity-10 pointer-events-none"
+                  style={{ background: "radial-gradient(circle, #F59E0B, transparent 70%)" }} />
+
+                <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-6 p-8 sm:p-10">
+                  {/* Left content */}
+                  <div className="flex items-center gap-5">
+                    <div
+                      className="flex-shrink-0 w-16 h-16 rounded-2xl flex items-center justify-center text-3xl"
+                      style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}
+                    >
+                      🏛️
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span
+                          className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full"
+                          style={{ background: "var(--clr-accent)", color: "white" }}
+                        >
+                          Official Rates
+                        </span>
+                      </div>
+                      <h2
+                        className="text-white text-xl sm:text-2xl font-bold leading-snug"
+                        style={{ fontFamily: "var(--font-display)" }}
+                      >
+                        Circle Rates / Collector Rates<br className="hidden sm:block" />
+                        <span style={{ color: "#93C5FD" }}> Palwal 2025–26</span>
+                      </h2>
+                      <p className="text-white/60 text-sm mt-1.5 max-w-sm">
+                        Check government-fixed property registry rates for plots, flats & agricultural land across all sectors in Palwal.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Right CTA */}
+                  <div className="flex-shrink-0">
+                    <span
+                      className="cta-shimmer inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-bold text-sm text-white transition-all duration-200 group-hover:scale-105"
+                      style={{
+                        background: "var(--clr-accent)",
+                        boxShadow: "0 8px 28px rgba(255,107,53,0.45)",
+                      }}
+                    >
+                      View Rates
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                      </svg>
+                    </span>
+                    <p className="text-white/40 text-[11px] text-center mt-2">Updated for FY 2025–26</p>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════════════
+            BLOG — Latest Articles
+        ═══════════════════════════════════════════════════════════════ */}
+        <BlogSection />
+
+        {/* ═══════════════════════════════════════════════════════════════
             ADVERTISE WITH US — bottom CTA banner
         ═══════════════════════════════════════════════════════════════ */}
         <section
@@ -1027,6 +1104,121 @@ export default function HomePage() {
         {modal && <LeadModal type={modal} onClose={() => setModal(null)} />}
       </div>
     </>
+  );
+}
+
+/* ─── Blog data ──────────────────────────────────────────────────────── */
+const BLOG_POSTS = [
+  {
+    slug: "palwal-to-jewar-airport-connectivity-routes-distance-timeline-2026",
+    title: "Palwal to Jewar Airport — Connectivity Routes, Distance & Timeline 2026",
+    description: "Complete guide to Palwal–Jewar Airport connectivity: Greenfield Expressway, Railway, Metro routes, distances, timelines, and real estate impact.",
+    category: "Infrastructure",
+    publishedAt: "Apr 11, 2026",
+    categoryColor: "#1746A2",
+    categoryBg: "#EEF2FF",
+    featureImage: "/blog/palwal-jewar-airport.jpg",
+  },
+  {
+    slug: "palwal-vs-faridabad-property-investment-guide-2026",
+    title: "Palwal vs Faridabad — Where to Buy Property in 2026?",
+    description: "In-depth comparison of Palwal and Faridabad property markets. Compare prices, appreciation, airport distance, metro access, pros & cons.",
+    category: "Property Guide",
+    publishedAt: "Apr 11, 2026",
+    categoryColor: "#065F46",
+    categoryBg: "#ECFDF5",
+    featureImage: "/blog/palwal-vs-faridabad.jpg",
+  },
+  {
+    slug: "haryana-property-transfer-after-death-legal-process-mutation-guide",
+    title: "How to Transfer Property After Death in Haryana — Mutation & Legal Guide",
+    description: "Step-by-step guide to transfer inherited property in Haryana. Mutation (intaqal), legal heir certificate, jamabandi update, and required documents.",
+    category: "Property Law",
+    publishedAt: "Apr 1, 2025",
+    categoryColor: "#7C3AED",
+    categoryBg: "#F5F3FF",
+    featureImage: "/blog/haryana-property-transfer.jpg",
+  },
+];
+
+/* ─── Blog section ───────────────────────────────────────────────────── */
+function BlogSection() {
+  const { ref, visible } = useReveal();
+  return (
+    <section ref={ref} className="py-14 max-w-6xl mx-auto px-4 sm:px-6">
+      <SectionHeader
+        title="Local Knowledge Hub"
+        sub="Guides, market insights & legal explainers for Palwal property buyers"
+        cta={{ label: "All Articles →", href: "/blog" }}
+      />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {BLOG_POSTS.map((post, i) => (
+          <Link key={post.slug} href={`/blog/${post.slug}`} className="block">
+            <article
+              className={`reveal-item ${visible ? "visible" : ""} lift bg-white rounded-2xl overflow-hidden h-full`}
+              style={{ border: "1px solid #e5e7eb", transitionDelay: `${i * 100}ms` }}
+            >
+              {/* Feature image */}
+              <div className="relative w-full h-44 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={post.featureImage}
+                  alt={post.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
+                {/* Fallback gradient overlay always visible */}
+                <div
+                  className="absolute inset-0 flex items-center justify-center"
+                  style={{
+                    background: `linear-gradient(135deg, ${post.categoryColor}22, ${post.categoryColor}44)`,
+                  }}
+                >
+                  <span className="text-5xl opacity-30">
+                    {post.category === "Infrastructure" ? "🛣️" : post.category === "Property Guide" ? "🏘️" : "⚖️"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-5">
+                {/* Category badge */}
+                <span
+                  className="inline-block text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full mb-3"
+                  style={{ background: post.categoryBg, color: post.categoryColor }}
+                >
+                  {post.category}
+                </span>
+
+                <h3
+                  className="font-bold text-[15px] leading-snug mb-2"
+                  style={{ color: "var(--clr-text)", fontFamily: "var(--font-display)" }}
+                >
+                  {post.title}
+                </h3>
+                <p className="text-xs leading-relaxed mb-4" style={{ color: "var(--clr-text-muted)" }}>
+                  {post.description}
+                </p>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-gray-400">{post.publishedAt}</span>
+                  <span
+                    className="text-xs font-semibold flex items-center gap-1"
+                    style={{ color: "var(--clr-primary)" }}
+                  >
+                    Read
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                  </span>
+                </div>
+              </div>
+            </article>
+          </Link>
+        ))}
+      </div>
+    </section>
   );
 }
 

@@ -142,12 +142,18 @@ export default function MyListingsPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-2 mt-3">
+                <div className="flex items-center gap-2 mt-3 flex-wrap">
                   <Link
                     href={`/dashboard/listings/${l.id}/edit`}
                     className="px-3 py-1.5 text-xs font-medium text-primary-600 border border-primary-200 rounded-lg hover:bg-primary-50"
                   >
                     Edit
+                  </Link>
+                  <Link
+                    href={`/dashboard/listings/${l.id}/photos`}
+                    className="px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center gap-1"
+                  >
+                    📷 {l.cover_photo ? 'Manage Photos' : 'Upload Photos'}
                   </Link>
                   {l.status === 'active' && (
                     <button
