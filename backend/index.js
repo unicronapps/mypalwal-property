@@ -29,6 +29,15 @@ app.use(
 );
 app.use(express.json());
 
+// Request logger
+app.use((req, _res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  if (req.body && Object.keys(req.body).length > 0) {
+    console.log('[BODY]', JSON.stringify(req.body, null, 2));
+  }
+  next();
+});
+
 // Routes
 app.use("/api/auth", require("./src/routes/auth"));
 app.use("/api/properties", require("./src/routes/properties"));
